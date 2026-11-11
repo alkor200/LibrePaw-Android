@@ -1,6 +1,9 @@
 package org.librepaw.app.data.auth
 
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.data.pets.TraccarPetRepository
 import org.librepaw.app.data.traccar.TraccarClient
 import org.librepaw.app.data.traccar.TraccarCredentials
 
@@ -21,5 +24,10 @@ class LiveAuthenticationService(private val credentialStore: CredentialStore) : 
 
   override fun logOut() {
     credentialStore.clear()
+  }
+
+  override fun makePetRepository(session: StoredSession): PetRepository {
+    val credentials = TraccarCredentials(session.serverUrl.toHttpUrl(), session.email, session.password)
+    return TraccarPetRepository(TraccarClient(credentials))
   }
 }

@@ -102,4 +102,7 @@ private class FakeAuthenticationService(private val result: Result<StoredSession
     result.getOrThrow()
 
   override fun logOut() {}
+
+  override fun makePetRepository(session: StoredSession): org.librepaw.app.data.pets.PetRepository =
+    throw UnsupportedOperationException("not used by this test")
 }

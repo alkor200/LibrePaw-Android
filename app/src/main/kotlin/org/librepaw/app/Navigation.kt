@@ -12,7 +12,7 @@ import androidx.navigation3.ui.NavDisplay
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.ui.auth.LoginScreen
-import org.librepaw.app.ui.main.MainScreen
+import org.librepaw.app.ui.petlist.PetListScreen
 
 @Composable
 fun MainNavigation(authenticationService: AuthenticationService) {
@@ -39,15 +39,20 @@ fun MainNavigation(authenticationService: AuthenticationService) {
           )
         }
         entry<Main> {
-          MainScreen(
-            onItemClick = { navKey -> backStack.add(navKey) },
-            loggedInEmail = currentSession?.email,
-            onLogOut = {
-              authenticationService.logOut()
-              currentSession = null
-              goTo(Login)
-            },
-          )
+          val session = currentSession
+          if (session != null) {
+            PetListScreen(
+              petRepository = remember(session) { authenticationService.makePetRepository(session) },
+              onPetClick = {
+                // Pet Detail isn't ported yet; nothing to navigate to.
+              },
+              onLogOut = {
+                authenticationService.logOut()
+                currentSession = null
+                goTo(Login)
+              },
+            )
+          }
         }
       },
   )
