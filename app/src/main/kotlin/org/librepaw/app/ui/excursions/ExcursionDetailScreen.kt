@@ -7,8 +7,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.FlagCircle
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
@@ -87,9 +97,9 @@ fun ExcursionDetailScreen(
   ) { innerPadding ->
     Column(modifier = Modifier.padding(innerPadding).fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
       if (excursion.isLikelyVehicleTrip) {
-        InfoBanner("This looks like a car or train ride, it isn't counted in your totals.")
+        InfoBanner(Icons.Filled.DirectionsCar, "This looks like a car or train ride, it isn't counted in your totals.")
       }
-      viewModel.routeText?.let { InfoBanner(it) }
+      viewModel.routeText?.let { InfoBanner(Icons.Filled.SwapHoriz, it) }
       StatGrid(excursion)
       MapCard(viewModel = viewModel, modifier = Modifier.weight(1f).fillMaxWidth())
     }
@@ -97,35 +107,40 @@ fun ExcursionDetailScreen(
 }
 
 @Composable
-private fun InfoBanner(text: String) {
+private fun InfoBanner(icon: ImageVector, text: String) {
   Surface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceVariant) {
-    Text(
-      text,
-      modifier = Modifier.padding(12.dp),
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+      Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+      Text(
+        text,
+        modifier = Modifier.padding(start = 8.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
   }
 }
 
 @Composable
 private fun StatGrid(excursion: Excursion) {
   val tiles = buildList {
-    add("Started" to timeText(excursion.startTime))
+    add(Triple(Icons.Filled.Flag, "Started", timeText(excursion.startTime)))
     if (excursion.isOngoing) {
-      add("Status" to "Away now")
+      add(Triple(Icons.Filled.Pets, "Status", "Away now"))
     } else {
-      excursion.endTime?.let { add("Ended" to timeText(it)) }
+      excursion.endTime?.let { add(Triple(Icons.Filled.FlagCircle, "Ended", timeText(it))) }
     }
-    excursion.distanceMeters?.let { add("Distance" to distanceText(it)) }
-    excursion.durationMillis?.let { add("Duration" to durationText(it)) }
-    excursion.averageSpeedKmh?.let { add("Avg. Speed" to "%.1f km/h".format(it)) }
+    excursion.distanceMeters?.let { add(Triple(Icons.Filled.Map, "Distance", distanceText(it))) }
+    excursion.durationMillis?.let { add(Triple(Icons.Filled.Schedule, "Duration", durationText(it))) }
+    excursion.averageSpeedKmh?.let { add(Triple(Icons.Filled.Speed, "Avg. Speed", "%.1f km/h".format(it))) }
   }
 
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     tiles.chunked(3).forEach { row ->
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        row.forEach { (label, value) -> DetailStatTile(label = label, value = value, modifier = Modifier.weight(1f)) }
+        row.forEach { (icon, label, value) ->
+          DetailStatTile(icon = icon, label = label, value = value, modifier = Modifier.weight(1f))
+        }
         repeat(3 - row.size) { Box(modifier = Modifier.weight(1f)) }
       }
     }
@@ -133,10 +148,11 @@ private fun StatGrid(excursion: Excursion) {
 }
 
 @Composable
-private fun DetailStatTile(label: String, value: String, modifier: Modifier = Modifier) {
+private fun DetailStatTile(icon: ImageVector, label: String, value: String, modifier: Modifier = Modifier) {
   Surface(modifier = modifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceVariant) {
     Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
-      Text(value, style = MaterialTheme.typography.bodyMedium)
+      Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+      Text(value, modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
       Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }

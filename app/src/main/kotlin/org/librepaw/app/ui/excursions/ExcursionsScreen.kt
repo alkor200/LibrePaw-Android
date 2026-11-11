@@ -8,11 +8,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -122,29 +130,49 @@ private fun ExcursionRow(excursion: Excursion, homeNamesById: Map<Int, String>, 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
       Text(dateTimeText(excursion.startTime), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
       if (excursion.isOngoing) {
-        Text("Away now", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
+        Badge(icon = Icons.Filled.Pets, text = "Away now", color = MaterialTheme.colorScheme.tertiary)
       } else if (excursion.isLikelyVehicleTrip) {
-        Text("Car ride?", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Badge(icon = Icons.Filled.DirectionsCar, text = "Car ride?", color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
 
     routeText(excursion, homeNamesById)?.let { text ->
-      Text(
-        text,
-        modifier = Modifier.padding(top = 4.dp),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+          Icons.Filled.SwapHoriz,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.size(14.dp),
+        )
+        Text(
+          text,
+          modifier = Modifier.padding(start = 4.dp),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
     }
 
     Row(modifier = Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-      excursion.durationMillis?.let {
-        Text(durationText(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
-      excursion.distanceMeters?.let {
-        Text(distanceText(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
+      excursion.durationMillis?.let { IconLabel(icon = Icons.Filled.Schedule, text = durationText(it)) }
+      excursion.distanceMeters?.let { IconLabel(icon = Icons.Filled.Map, text = distanceText(it)) }
     }
+  }
+}
+
+@Composable
+private fun Badge(icon: ImageVector, text: String, color: Color) {
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+    Text(text, modifier = Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelMedium, color = color)
+  }
+}
+
+@Composable
+private fun IconLabel(icon: ImageVector, text: String) {
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+    Text(text, modifier = Modifier.padding(start = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
   }
 }
 

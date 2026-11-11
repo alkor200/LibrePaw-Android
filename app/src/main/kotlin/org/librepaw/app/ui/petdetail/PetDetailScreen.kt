@@ -18,12 +18,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Battery0Bar
+import androidx.compose.material.icons.filled.Battery2Bar
+import androidx.compose.material.icons.filled.Battery4Bar
+import androidx.compose.material.icons.filled.Battery6Bar
+import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -193,6 +202,7 @@ private fun PetDetailContent(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
           rowTiles.forEach { tile ->
             StatTile(
+              icon = tile.icon,
               label = tile.label,
               value = tile.value,
               modifier = Modifier.weight(1f),
@@ -228,7 +238,7 @@ private fun PetDetailContent(
           modifier = Modifier.fillMaxWidth().clickable { onTrailClick(pet) }.padding(16.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(Icons.Filled.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+          Icon(Icons.Filled.Route, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
           Text("Trail", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
           Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -243,7 +253,7 @@ private fun PetDetailContent(
           modifier = Modifier.fillMaxWidth().clickable { onExcursionsClick(pet) }.padding(16.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+          Icon(Icons.Filled.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
           Text("Excursions", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
           Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -277,7 +287,7 @@ private fun PetDetailContent(
           modifier = Modifier.fillMaxWidth().clickable { onSharePetClick(pet) }.padding(16.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+          Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
           Text("Share ${pet.name}", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
           Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -289,6 +299,7 @@ private fun PetDetailContent(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StatTile(
+  icon: ImageVector,
   label: String,
   value: String,
   modifier: Modifier = Modifier,
@@ -301,8 +312,9 @@ private fun StatTile(
   Surface(modifier = tileModifier, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceVariant) {
     Box {
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.titleMedium)
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        Text(value, modifier = Modifier.padding(top = 6.dp), style = MaterialTheme.typography.titleMedium)
+        Text(label, modifier = Modifier.padding(top = 2.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
       if (onRecalculate != null) {
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
@@ -321,24 +333,34 @@ private fun StatTile(
   }
 }
 
-private data class Tile(val label: String, val value: String, val onRecalculate: (() -> Unit)? = null)
+private data class Tile(val icon: ImageVector, val label: String, val value: String, val onRecalculate: (() -> Unit)? = null)
 
 private fun statTiles(pet: Pet, viewModel: PetDetailViewModel): List<Tile> {
   val tiles = mutableListOf<Tile>()
   val position = pet.lastPosition
-  tiles += Tile("Speed", position?.let { "%.1f km/h".format(it.speedKilometersPerHour) } ?: "—")
-  tiles += Tile("Last Update", pet.lastSeenAt?.let { relativeTime(it) } ?: "—")
-  position?.batteryLevelPercent?.let { tiles += Tile("Battery", "${it.toInt()}%") }
-  viewModel.totalTrailDistanceMeters?.let { tiles += Tile("Distance Today", formattedDistance(it)) }
-  viewModel.totalTimeAwayTodayMillis?.let { tiles += Tile("Time Away Today", formattedDuration(it)) }
+  tiles += Tile(Icons.Filled.Speed, "Speed", position?.let { "%.1f km/h".format(it.speedKilometersPerHour) } ?: "—")
+  tiles += Tile(Icons.Filled.Schedule, "Last Update", pet.lastSeenAt?.let { relativeTime(it) } ?: "—")
+  position?.batteryLevelPercent?.let { tiles += Tile(batteryIcon(it), "Battery", "${it.toInt()}%") }
+  viewModel.totalTrailDistanceMeters?.let { tiles += Tile(Icons.Filled.Map, "Distance Today", formattedDistance(it)) }
+  viewModel.totalTimeAwayTodayMillis?.let { tiles += Tile(Icons.Filled.Pets, "Time Away Today", formattedDuration(it)) }
   viewModel.lifetimeStats?.takeIf { it.totalDistanceMeters > 0 }?.let {
-    tiles += Tile("Total Distance", formattedDistance(it.totalDistanceMeters), onRecalculate = viewModel::recalculate)
+    tiles += Tile(Icons.Filled.Map, "Total Distance", formattedDistance(it.totalDistanceMeters), onRecalculate = viewModel::recalculate)
   }
   viewModel.lifetimeStats?.takeIf { it.totalDurationMillis > 0 }?.let {
-    tiles += Tile("Total Time Away", formattedDuration(it.totalDurationMillis), onRecalculate = viewModel::recalculate)
+    tiles += Tile(Icons.Filled.Pets, "Total Time Away", formattedDuration(it.totalDurationMillis), onRecalculate = viewModel::recalculate)
   }
   return tiles
 }
+
+/** Same breakpoints as iOS's own `batteryIcon(for:)` (PetStatus+Presentation.swift). */
+private fun batteryIcon(percent: Double): ImageVector =
+  when {
+    percent < 13 -> Icons.Filled.Battery0Bar
+    percent < 38 -> Icons.Filled.Battery2Bar
+    percent < 63 -> Icons.Filled.Battery4Bar
+    percent < 88 -> Icons.Filled.Battery6Bar
+    else -> Icons.Filled.BatteryFull
+  }
 
 private fun locationText(pet: Pet): String {
   val position = pet.lastPosition ?: return "No location yet."
