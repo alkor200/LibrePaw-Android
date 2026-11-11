@@ -15,6 +15,8 @@ import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.auth.LoginScreen
 import org.librepaw.app.ui.editpet.EditPetScreen
 import org.librepaw.app.ui.home.HomeScreen
+import org.librepaw.app.ui.homes.HomesScreen
+import org.librepaw.app.ui.homes.SetHomeScreen
 import org.librepaw.app.ui.petdetail.PetDetailScreen
 
 @Composable
@@ -68,6 +70,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               petRepository = repository,
               onBack = { backStack.removeLastOrNull() },
               onEditClick = { pet -> backStack.add(EditPet(pet.id)) },
+              onHomesClick = { pet -> backStack.add(Homes(pet.id, pet.name)) },
               dataVersion = petDataVersion,
             )
           }
@@ -78,6 +81,37 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               petId = key.petId,
               petRepository = repository,
               onSaved = {
+                petDataVersion++
+                backStack.removeLastOrNull()
+              },
+              onCancel = { backStack.removeLastOrNull() },
+            )
+          }
+        }
+        entry<Homes> { key ->
+          petRepository?.let { repository ->
+            HomesScreen(
+              petId = key.petId,
+              petName = key.petName,
+              petRepository = repository,
+              onBack = { backStack.removeLastOrNull() },
+              onAddHome = { backStack.add(SetHome(key.petId, homeId = null)) },
+              onEditHome = { home -> backStack.add(SetHome(key.petId, homeId = home.id)) },
+              dataVersion = petDataVersion,
+            )
+          }
+        }
+        entry<SetHome> { key ->
+          petRepository?.let { repository ->
+            SetHomeScreen(
+              petId = key.petId,
+              homeId = key.homeId,
+              petRepository = repository,
+              onSaved = {
+                petDataVersion++
+                backStack.removeLastOrNull()
+              },
+              onDeleted = {
                 petDataVersion++
                 backStack.removeLastOrNull()
               },

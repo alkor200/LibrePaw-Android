@@ -5,6 +5,8 @@ import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.CredentialStore
 import org.librepaw.app.data.auth.EncryptedCredentialStore
 import org.librepaw.app.data.auth.LiveAuthenticationService
+import org.librepaw.app.data.pets.ExcursionCacheStore
+import org.librepaw.app.data.pets.LifetimeStatsStore
 import org.librepaw.app.data.settings.AppearancePreferences
 
 /**
@@ -14,6 +16,9 @@ import org.librepaw.app.data.settings.AppearancePreferences
  */
 class AppContainer(context: Context) {
   val credentialStore: CredentialStore = EncryptedCredentialStore(context)
-  val authenticationService: AuthenticationService = LiveAuthenticationService(credentialStore)
+  val excursionCacheStore: ExcursionCacheStore = ExcursionCacheStore(context)
+  val lifetimeStatsStore: LifetimeStatsStore = LifetimeStatsStore(context)
+  val authenticationService: AuthenticationService =
+    LiveAuthenticationService(credentialStore, excursionCacheStore, lifetimeStatsStore)
   val appearancePreferences: AppearancePreferences = AppearancePreferences(context)
 }

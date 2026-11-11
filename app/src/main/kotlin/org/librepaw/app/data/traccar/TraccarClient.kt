@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -62,6 +63,74 @@ class TraccarClient(private val credentials: TraccarCredentials) {
 
   /** The latest known position for every device the user can see. */
   suspend fun fetchLatestPositions(): List<TraccarPosition> = getJson("api/positions")
+
+  /** Position history for one device within a time range, Traccar's own ordering (usually oldest first). */
+  suspend fun fetchPositionHistory(deviceId: Int, fromEpochMillis: Long, toEpochMillis: Long): List<TraccarPosition> {
+    val url =
+      credentials.serverUrl.newBuilder().addPathSegments("api/positions")
+        .addQueryParameter("deviceId", deviceId.toString())
+        .addQueryParameter("from", TraccarDates.queryParam(fromEpochMillis))
+        .addQueryParameter("to", TraccarDates.queryParam(toEpochMillis))
+        .build()
+    return getJson(url)
+  }
+
+  /** Geofences visible to the user, optionally scoped to one device. */
+  suspend fun fetchGeofences(deviceId: Int? = null): List<TraccarGeofence> {
+    val builder = credentials.serverUrl.newBuilder().addPathSegments("api/geofences")
+    if (deviceId != null) builder.addQueryParameter("deviceId", deviceId.toString())
+    return getJson(builder.build())
+  }
+
+  suspend fun createGeofence(name: String, area: String, attributes: Map<String, JsonElement>): TraccarGeofence {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/geofences").build()
+    val payload = geofencePayload(id = null, name = name, area = area, attributes = attributes)
+    return postJson(url, payload)
+  }
+
+  suspend fun updateGeofence(id: Int, name: String, area: String, attributes: Map<String, JsonElement>) {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/geofences/$id").build()
+    val payload = geofencePayload(id = id, name = name, area = area, attributes = attributes)
+    executeVoid(Request.Builder().url(url).put(payload.toString().toRequestBody("application/json".toMediaType())).build())
+  }
+
+  suspend fun deleteGeofence(id: Int) {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/geofences/$id").build()
+    executeVoid(Request.Builder().url(url).delete().build())
+  }
+
+  suspend fun linkGeofenceToDevice(geofenceId: Int, deviceId: Int) {
+    linkPermission(mapOf("deviceId" to JsonPrimitive(deviceId), "geofenceId" to JsonPrimitive(geofenceId)))
+  }
+
+  suspend fun linkGeofenceToUser(geofenceId: Int, userId: Int) {
+    linkPermission(mapOf("userId" to JsonPrimitive(userId), "geofenceId" to JsonPrimitive(geofenceId)))
+  }
+
+  suspend fun linkDeviceToUser(deviceId: Int, userId: Int) {
+    linkPermission(mapOf("userId" to JsonPrimitive(userId), "deviceId" to JsonPrimitive(deviceId)))
+  }
+
+  private suspend fun linkPermission(fields: Map<String, JsonElement>) {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/permissions").build()
+    val payload = JsonObject(fields)
+    executeVoid(Request.Builder().url(url).post(payload.toString().toRequestBody("application/json".toMediaType())).build())
+  }
+
+  /** Events of one [type] (e.g. `geofenceEnter`/`geofenceExit`) for a device within a time range. */
+  suspend fun fetchEvents(deviceId: Int, fromEpochMillis: Long, toEpochMillis: Long, type: String): List<TraccarEvent> {
+    val url =
+      credentials.serverUrl.newBuilder().addPathSegments("api/reports/events")
+        .addQueryParameter("deviceId", deviceId.toString())
+        .addQueryParameter("from", TraccarDates.queryParam(fromEpochMillis))
+        .addQueryParameter("to", TraccarDates.queryParam(toEpochMillis))
+        .addQueryParameter("type", type)
+        .build()
+    return getJson(url)
+  }
+
+  /** Every user on the server; admin-only (used to look up a user by email for pet sharing). */
+  suspend fun fetchUsers(): List<TraccarUser> = getJson("api/users")
 
   /**
    * The signed-in account. Needs the cookie session, not Basic Auth: `GET /api/session` returns
@@ -142,6 +211,15 @@ class TraccarClient(private val credentials: TraccarCredentials) {
     withResponse(putRequest) { response -> if (!response.isSuccessful) throw statusError(response.code) }
   }
 
+  private fun geofencePayload(id: Int?, name: String, area: String, attributes: Map<String, JsonElement>): JsonObject {
+    val fields = mutableMapOf<String, JsonElement>()
+    if (id != null) fields["id"] = JsonPrimitive(id)
+    fields["name"] = JsonPrimitive(name)
+    fields["area"] = JsonPrimitive(area)
+    fields["attributes"] = JsonObject(attributes)
+    return JsonObject(fields)
+  }
+
   /** `POST /api/session` with form-urlencoded credentials; Traccar sets the session cookie via `Set-Cookie`. */
   private suspend fun ensureCookieSession() {
     if (hasCookieSession) return
@@ -153,10 +231,17 @@ class TraccarClient(private val credentials: TraccarCredentials) {
     }
   }
 
-  private suspend inline fun <reified T> getJson(path: String): T {
-    val url = credentials.serverUrl.newBuilder().addPathSegments(path).build()
+  private suspend inline fun <reified T> getJson(path: String): T =
+    getJson(credentials.serverUrl.newBuilder().addPathSegments(path).build())
+
+  private suspend inline fun <reified T> getJson(url: HttpUrl): T = executeJson(Request.Builder().url(url).get().build())
+
+  private suspend inline fun <reified T> postJson(url: HttpUrl, payload: JsonObject): T =
+    executeJson(Request.Builder().url(url).post(payload.toString().toRequestBody("application/json".toMediaType())).build())
+
+  private suspend inline fun <reified T> executeJson(request: Request): T {
     val body =
-      withResponse(Request.Builder().url(url).get().build()) { response ->
+      withResponse(request) { response ->
         if (!response.isSuccessful) throw statusError(response.code)
         response.body.string()
       }
@@ -165,6 +250,10 @@ class TraccarClient(private val credentials: TraccarCredentials) {
     } catch (e: SerializationException) {
       throw TraccarError.Decoding(e.message ?: "unknown decoding error")
     }
+  }
+
+  private suspend fun executeVoid(request: Request) {
+    withResponse(request) { response -> if (!response.isSuccessful) throw statusError(response.code) }
   }
 
   /**

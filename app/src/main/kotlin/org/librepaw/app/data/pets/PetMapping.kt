@@ -1,12 +1,10 @@
 package org.librepaw.app.data.pets
 
-import java.text.ParseException
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import okhttp3.HttpUrl
+import org.librepaw.app.data.traccar.TraccarDates
 import org.librepaw.app.data.traccar.TraccarDevice
 import org.librepaw.app.data.traccar.TraccarPosition
 
@@ -18,7 +16,7 @@ object PetMapping {
       name = device.name,
       species = device.category,
       status = status(device.status),
-      lastSeenAt = parseIso8601(device.lastUpdate),
+      lastSeenAt = TraccarDates.parse(device.lastUpdate),
       lastPosition = latestPosition?.let(::position),
       photoUrl = photoUrl(device, serverUrl),
     )
@@ -29,7 +27,7 @@ object PetMapping {
       petId = position.deviceId,
       latitude = position.latitude,
       longitude = position.longitude,
-      recordedAt = parseIso8601(position.fixTime) ?: 0L,
+      recordedAt = TraccarDates.parse(position.fixTime) ?: 0L,
       // Traccar reports speed in knots regardless of locale.
       speedKilometersPerHour = position.speed * 1.852,
       address = position.address,
@@ -48,17 +46,5 @@ object PetMapping {
     val filename = (device.attributes["deviceImage"] as? JsonPrimitive)?.contentOrNull
     if (filename.isNullOrBlank()) return null
     return serverUrl.newBuilder().addPathSegments("api/media/${device.uniqueId}/$filename").build()
-  }
-
-  private val isoFormat =
-    ThreadLocal.withInitial { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US) }
-
-  private fun parseIso8601(raw: String?): Long? {
-    if (raw.isNullOrBlank()) return null
-    return try {
-      isoFormat.get()!!.parse(raw)?.time
-    } catch (e: ParseException) {
-      null
-    }
   }
 }

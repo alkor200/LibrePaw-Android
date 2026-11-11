@@ -15,7 +15,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +49,7 @@ fun PetDetailScreen(
   petRepository: PetRepository,
   onBack: () -> Unit,
   onEditClick: (Pet) -> Unit,
+  onHomesClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
   /** Bumped by the caller after a successful edit, so a fresh [PetDetailViewModel] re-fetches instead of reusing stale cached state. */
   dataVersion: Int = 0,
@@ -110,6 +113,7 @@ fun PetDetailScreen(
             permissions = state.permissions,
             petRepository = petRepository,
             onEditClick = onEditClick,
+            onHomesClick = onHomesClick,
           )
       }
     }
@@ -122,6 +126,7 @@ private fun PetDetailContent(
   permissions: AccountPermissions?,
   petRepository: PetRepository,
   onEditClick: (Pet) -> Unit,
+  onHomesClick: (Pet) -> Unit,
 ) {
   Column(
     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -178,6 +183,21 @@ private fun PetDetailContent(
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(locationText(pet), modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
+      }
+    }
+
+    Surface(
+      modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+      shape = MaterialTheme.shapes.medium,
+      color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth().clickable { onHomesClick(pet) }.padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Icon(Icons.Filled.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text("${pet.name}'s Homes", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
   }

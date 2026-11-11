@@ -93,4 +93,33 @@ private class FakePetRepository(private val pets: List<Pet>) : PetRepository {
   override suspend fun setPhoto(petId: Int, jpegData: ByteArray) {
     photosSet++
   }
+
+  override suspend fun fetchTrail(petId: Int, fromEpochMillis: Long, toEpochMillis: Long) =
+    throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun homeGeofences(petId: Int) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun addHomeGeofence(petId: Int, name: String, center: org.librepaw.app.data.pets.Coordinate, radiusMeters: Double) =
+    throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun updateHomeGeofence(
+    homeId: Int,
+    petId: Int,
+    name: String,
+    center: org.librepaw.app.data.pets.Coordinate,
+    radiusMeters: Double,
+  ) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun deleteHomeGeofence(homeId: Int) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun fetchExcursions(petId: Int, fromEpochMillis: Long, toEpochMillis: Long) =
+    throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun resetExcursionsCache(petId: Int) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun lifetimeExcursionStats(petId: Int) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun resetLifetimeStats(petId: Int) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun sharePet(petId: Int, email: String) = throw UnsupportedOperationException("not used by this test")
 }

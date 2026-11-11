@@ -10,7 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,23 +18,20 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.gson.JsonObject
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
+import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
+import org.librepaw.app.ui.common.MapLibreHost
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapView
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
@@ -44,8 +40,6 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 
-private const val LIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
-private const val DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/fiord"
 private const val PETS_SOURCE_ID = "pets"
 private const val PETS_LAYER_ID = "pets-layer"
 
@@ -59,11 +53,11 @@ fun PetMapScreen(
   viewModel: PetMapViewModel = viewModel(key = "pet-map-$dataVersion") { PetMapViewModel(petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  val styleUrl = if (LocalDarkTheme.current) DARK_STYLE_URL else LIGHT_STYLE_URL
+  val styleUrl = if (LocalDarkTheme.current) DARK_MAP_STYLE_URL else LIGHT_MAP_STYLE_URL
   val pets = (uiState as? PetMapUiState.Loaded)?.pets.orEmpty()
 
   Box(modifier = modifier.fillMaxSize()) {
-    MapLibreMapView(styleUrl = styleUrl, pets = pets, onPetClick = onPetClick, modifier = Modifier.fillMaxSize())
+    PetMarkersMap(styleUrl = styleUrl, pets = pets, onPetClick = onPetClick, modifier = Modifier.fillMaxSize())
 
     when (val state = uiState) {
       PetMapUiState.Loading ->
@@ -115,38 +109,10 @@ fun PetMapScreen(
 }
 
 @Composable
-private fun MapLibreMapView(
-  styleUrl: String,
-  pets: List<Pet>,
-  onPetClick: (Pet) -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  val context = LocalContext.current
-  val lifecycleOwner = LocalLifecycleOwner.current
-  val mapView = remember { MapView(context) }
+private fun PetMarkersMap(styleUrl: String, pets: List<Pet>, onPetClick: (Pet) -> Unit, modifier: Modifier = Modifier) {
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
   val latestPets by rememberUpdatedState(pets)
   val latestOnPetClick by rememberUpdatedState(onPetClick)
-
-  DisposableEffect(lifecycleOwner, mapView) {
-    mapView.onCreate(null)
-    val observer = LifecycleEventObserver { _, event ->
-      when (event) {
-        Lifecycle.Event.ON_START -> mapView.onStart()
-        Lifecycle.Event.ON_RESUME -> mapView.onResume()
-        Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-        Lifecycle.Event.ON_STOP -> mapView.onStop()
-        else -> {}
-      }
-    }
-    lifecycleOwner.lifecycle.addObserver(observer)
-    onDispose {
-      lifecycleOwner.lifecycle.removeObserver(observer)
-      mapView.onDestroy()
-    }
-  }
-
-  LaunchedEffect(mapView) { mapView.getMapAsync { loadedMap -> map = loadedMap } }
 
   LaunchedEffect(map) {
     val currentMap = map ?: return@LaunchedEffect
@@ -190,7 +156,7 @@ private fun MapLibreMapView(
     }
   }
 
-  AndroidView(factory = { mapView }, modifier = modifier)
+  MapLibreHost(modifier = modifier, onMapReady = { map = it })
 }
 
 private fun markerImageId(pet: Pet) = "pet-${pet.id}"

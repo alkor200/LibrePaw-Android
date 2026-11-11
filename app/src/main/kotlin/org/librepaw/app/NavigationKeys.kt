@@ -10,3 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class PetDetail(val petId: Int) : NavKey
 
 @Serializable data class EditPet(val petId: Int) : NavKey
+
+@Serializable data class Homes(val petId: Int, val petName: String) : NavKey
+
+@Serializable data class SetHome(val petId: Int, val homeId: Int?) : NavKey
