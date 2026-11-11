@@ -1,65 +1,81 @@
-/*
- * Copyright 2026 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.librepaw.app.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = primaryDark,
-    primaryContainer = primaryContainerDark,
-    secondary = secondaryDark,
-    tertiary = tertiaryDark
-)
+private val LightColorScheme =
+  lightColorScheme(
+    primary = AppPrimaryDarkLight,
+    onPrimary = AppOnPrimaryLight,
+    primaryContainer = AppPrimary,
+    // AppText rather than AppPrimaryDark: the latter is itself a fairly soft tone, and paired
+    // with the equally-soft AppPrimary container (e.g. a SegmentedButton's selected pill, a
+    // FAB) the two sit too close in lightness to read clearly. AppText is tuned for contrast
+    // against both AppBackground and AppPrimary's medium-sage tone alike.
+    onPrimaryContainer = AppTextLight,
+    // LibrePaw's palette is deliberately monochrome (a single brand hue): secondary/tertiary
+    // reuse the same tones rather than introducing accent colors the iOS app doesn't have,
+    // so Material components that key off them (e.g. NavigationBar's selected-tab pill) stay
+    // on-brand instead of falling back to M3's default purple baseline.
+    secondary = AppPrimaryDarkLight,
+    onSecondary = AppOnPrimaryLight,
+    secondaryContainer = AppPrimary,
+    onSecondaryContainer = AppTextLight,
+    tertiary = AppPrimaryDarkLight,
+    onTertiary = AppOnPrimaryLight,
+    tertiaryContainer = AppPrimary,
+    onTertiaryContainer = AppTextLight,
+    background = AppBackgroundLight,
+    onBackground = AppTextLight,
+    surface = AppSurfaceLight,
+    onSurface = AppTextLight,
+    surfaceVariant = AppSurfaceLight,
+    onSurfaceVariant = AppSecondaryTextLight,
+    outline = AppBorderLight,
+    outlineVariant = AppBorderLight,
+    // Unspecified, these default to M3's baseline cool-gray/blue tones (visible, for example, as
+    // a lavender tint behind the bottom NavigationBar), which clash with the brand's warm palette.
+    surfaceContainerLowest = AppBackgroundLight,
+    surfaceContainerLow = AppBackgroundLight,
+    surfaceContainer = AppSurfaceLight,
+    surfaceContainerHigh = AppSurfaceLight,
+    surfaceContainerHighest = AppSurfaceLight,
+  )
 
-private val LightColorScheme = lightColorScheme(
-    primary = primaryLight,
-    primaryContainer = primaryContainerLight,
-    secondary = secondaryLight,
-    tertiary = tertiaryLight
-)
+private val DarkColorScheme =
+  darkColorScheme(
+    primary = AppPrimaryDarkDark,
+    onPrimary = AppOnPrimaryDark,
+    primaryContainer = AppPrimary,
+    onPrimaryContainer = AppTextLight,
+    secondary = AppPrimaryDarkDark,
+    onSecondary = AppOnPrimaryDark,
+    secondaryContainer = AppPrimary,
+    onSecondaryContainer = AppTextLight,
+    tertiary = AppPrimaryDarkDark,
+    onTertiary = AppOnPrimaryDark,
+    tertiaryContainer = AppPrimary,
+    onTertiaryContainer = AppTextLight,
+    background = AppBackgroundDark,
+    onBackground = AppTextDark,
+    surface = AppSurfaceDark,
+    onSurface = AppTextDark,
+    surfaceVariant = AppSurfaceDark,
+    onSurfaceVariant = AppSecondaryTextDark,
+    outline = AppBorderDark,
+    outlineVariant = AppBorderDark,
+    surfaceContainerLowest = AppBackgroundDark,
+    surfaceContainerLow = AppBackgroundDark,
+    surfaceContainer = AppSurfaceDark,
+    surfaceContainerHigh = AppSurfaceDark,
+    surfaceContainerHighest = AppSurfaceDark,
+  )
 
+/** LibrePaw's own Material3 theme, matching the iOS app's brand palette (see [Color.kt]). */
 @Composable
-fun LibrePawTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+fun LibrePawTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+  MaterialTheme(colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme, typography = Typography, content = content)
 }
-
