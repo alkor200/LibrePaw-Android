@@ -1,17 +1,11 @@
 package org.librepaw.app.ui.map
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.gson.JsonObject
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -58,25 +53,15 @@ private const val PETS_LAYER_ID = "pets-layer"
 fun PetMapScreen(
   petRepository: PetRepository,
   onPetClick: (Pet) -> Unit,
-  onLogOut: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: PetMapViewModel = viewModel { PetMapViewModel(petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  val styleUrl = if (isSystemInDarkTheme()) DARK_STYLE_URL else LIGHT_STYLE_URL
+  val styleUrl = if (LocalDarkTheme.current) DARK_STYLE_URL else LIGHT_STYLE_URL
   val pets = (uiState as? PetMapUiState.Loaded)?.pets.orEmpty()
 
   Box(modifier = modifier.fillMaxSize()) {
     MapLibreMapView(styleUrl = styleUrl, pets = pets, onPetClick = onPetClick, modifier = Modifier.fillMaxSize())
-
-    IconButton(
-      onClick = onLogOut,
-      modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
-      colors =
-        IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-    ) {
-      Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Log Out")
-    }
 
     when (val state = uiState) {
       PetMapUiState.Loading ->

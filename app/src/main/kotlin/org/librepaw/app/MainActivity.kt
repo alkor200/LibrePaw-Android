@@ -4,11 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.librepaw.app.data.settings.AppearanceMode
 import org.librepaw.app.ui.theme.LibrePawTheme
+import org.librepaw.app.ui.theme.LocalDarkTheme
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,9 +24,22 @@ class MainActivity : ComponentActivity() {
 
     enableEdgeToEdge()
     setContent {
-      LibrePawTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-          MainNavigation(authenticationService = appContainer.authenticationService)
+      val appearanceMode by appContainer.appearancePreferences.mode.collectAsStateWithLifecycle()
+      val isDarkTheme =
+        when (appearanceMode) {
+          AppearanceMode.AUTOMATIC -> isSystemInDarkTheme()
+          AppearanceMode.LIGHT -> false
+          AppearanceMode.DARK -> true
+        }
+
+      CompositionLocalProvider(LocalDarkTheme provides isDarkTheme) {
+        LibrePawTheme(darkTheme = isDarkTheme) {
+          Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            MainNavigation(
+            authenticationService = appContainer.authenticationService,
+            appearancePreferences = appContainer.appearancePreferences,
+          )
+          }
         }
       }
     }

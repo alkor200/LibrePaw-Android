@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -45,7 +44,6 @@ import org.librepaw.app.ui.common.PetStatusPresentation
 fun PetListScreen(
   petRepository: PetRepository,
   onPetClick: (Pet) -> Unit,
-  onLogOut: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: PetListViewModel = viewModel { PetListViewModel(petRepository) },
 ) {
@@ -59,9 +57,6 @@ fun PetListScreen(
         actions = {
           IconButton(onClick = viewModel::refresh) {
             Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-          }
-          IconButton(onClick = onLogOut) {
-            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Log Out")
           }
         },
         colors =

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -15,20 +16,26 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.map.PetMapScreen
 import org.librepaw.app.ui.petlist.PetListScreen
+import org.librepaw.app.ui.settings.SettingsScreen
 
-/** The two tabs the iOS app shows (a third, Settings, isn't ported yet). Map is the default, same as iOS. */
+/** The three tabs the iOS app shows, same order: Map first (the default), then Pets, then Settings. */
 private enum class HomeTab {
   Map,
   Pets,
+  Settings,
 }
 
 @Composable
 fun HomeScreen(
+  session: StoredSession,
   petRepository: PetRepository,
+  appearancePreferences: AppearancePreferences,
   onPetClick: (Pet) -> Unit,
   onLogOut: () -> Unit,
   modifier: Modifier = Modifier,
@@ -51,21 +58,28 @@ fun HomeScreen(
           icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
           label = { Text("Pets") },
         )
+        NavigationBarItem(
+          selected = selectedTab == HomeTab.Settings,
+          onClick = { selectedTab = HomeTab.Settings },
+          icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+          label = { Text("Settings") },
+        )
       }
     },
   ) { innerPadding ->
     when (selectedTab) {
       HomeTab.Map ->
-        PetMapScreen(
-          petRepository = petRepository,
-          onPetClick = onPetClick,
-          onLogOut = onLogOut,
-          modifier = Modifier.padding(innerPadding),
-        )
+        PetMapScreen(petRepository = petRepository, onPetClick = onPetClick, modifier = Modifier.padding(innerPadding))
       HomeTab.Pets ->
         PetListScreen(
           petRepository = petRepository,
           onPetClick = onPetClick,
+          modifier = Modifier.padding(innerPadding),
+        )
+      HomeTab.Settings ->
+        SettingsScreen(
+          session = session,
+          appearancePreferences = appearancePreferences,
           onLogOut = onLogOut,
           modifier = Modifier.padding(innerPadding),
         )

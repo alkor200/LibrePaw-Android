@@ -11,12 +11,13 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
+import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.auth.LoginScreen
 import org.librepaw.app.ui.home.HomeScreen
 import org.librepaw.app.ui.petdetail.PetDetailScreen
 
 @Composable
-fun MainNavigation(authenticationService: AuthenticationService) {
+fun MainNavigation(authenticationService: AuthenticationService, appearancePreferences: AppearancePreferences) {
   var currentSession by remember { mutableStateOf(authenticationService.restoreSession()) }
   val backStack = rememberNavBackStack(if (currentSession != null) Main else Login)
   val petRepository = currentSession?.let { session -> remember(session) { authenticationService.makePetRepository(session) } }
@@ -41,9 +42,13 @@ fun MainNavigation(authenticationService: AuthenticationService) {
           )
         }
         entry<Main> {
-          petRepository?.let { repository ->
+          val session = currentSession
+          val repository = petRepository
+          if (session != null && repository != null) {
             HomeScreen(
+              session = session,
               petRepository = repository,
+              appearancePreferences = appearancePreferences,
               onPetClick = { pet -> backStack.add(PetDetail(pet.id)) },
               onLogOut = {
                 authenticationService.logOut()
