@@ -13,11 +13,13 @@ import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.ui.auth.LoginScreen
 import org.librepaw.app.ui.home.HomeScreen
+import org.librepaw.app.ui.petdetail.PetDetailScreen
 
 @Composable
 fun MainNavigation(authenticationService: AuthenticationService) {
   var currentSession by remember { mutableStateOf(authenticationService.restoreSession()) }
   val backStack = rememberNavBackStack(if (currentSession != null) Main else Login)
+  val petRepository = currentSession?.let { session -> remember(session) { authenticationService.makePetRepository(session) } }
 
   fun goTo(key: NavKey) {
     backStack.clear()
@@ -39,18 +41,24 @@ fun MainNavigation(authenticationService: AuthenticationService) {
           )
         }
         entry<Main> {
-          val session = currentSession
-          if (session != null) {
+          petRepository?.let { repository ->
             HomeScreen(
-              petRepository = remember(session) { authenticationService.makePetRepository(session) },
-              onPetClick = {
-                // Pet Detail isn't ported yet; nothing to navigate to.
-              },
+              petRepository = repository,
+              onPetClick = { pet -> backStack.add(PetDetail(pet.id)) },
               onLogOut = {
                 authenticationService.logOut()
                 currentSession = null
                 goTo(Login)
               },
+            )
+          }
+        }
+        entry<PetDetail> { key ->
+          petRepository?.let { repository ->
+            PetDetailScreen(
+              petId = key.petId,
+              petRepository = repository,
+              onBack = { backStack.removeLastOrNull() },
             )
           }
         }

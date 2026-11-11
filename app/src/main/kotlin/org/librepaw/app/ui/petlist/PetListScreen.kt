@@ -1,10 +1,6 @@
 package org.librepaw.app.ui.petlist
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.text.format.DateUtils
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,11 +9,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
@@ -34,13 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,7 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
-import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.PetAvatar
 import org.librepaw.app.ui.common.PetStatusPresentation
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,7 +164,7 @@ private fun PetGridCell(pet: Pet, petRepository: PetRepository, onClick: () -> U
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Top,
   ) {
-    PetAvatar(pet = pet, petRepository = petRepository)
+    PetAvatar(pet = pet, petRepository = petRepository, size = 84.dp)
     Text(
       pet.name,
       modifier = Modifier.padding(top = 8.dp),
@@ -193,62 +182,6 @@ private fun PetGridCell(pet: Pet, petRepository: PetRepository, onClick: () -> U
     )
   }
 }
-
-@Composable
-private fun PetAvatar(pet: Pet, petRepository: PetRepository) {
-  val photo by
-    produceState<Bitmap?>(initialValue = null, key1 = pet.photoUrl) {
-      value =
-        try {
-          petRepository.fetchPhoto(pet)?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
-        } catch (e: TraccarError) {
-          null
-        }
-    }
-
-  Box(modifier = Modifier.size(84.dp), contentAlignment = Alignment.Center) {
-    Surface(
-      shape = CircleShape,
-      modifier = Modifier.fillMaxSize().border(2.dp, statusTint(pet.status), CircleShape),
-      color = MaterialTheme.colorScheme.surfaceVariant,
-    ) {
-      val bitmap = photo
-      if (bitmap != null) {
-        Image(
-          painter = BitmapPainter(bitmap.asImageBitmap()),
-          contentDescription = pet.name,
-          modifier = Modifier.fillMaxSize(),
-        )
-      } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-          Text(
-            pet.name.take(1).uppercase(),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-      }
-    }
-
-    val batteryPercent = pet.lastPosition?.batteryLevelPercent
-    if (batteryPercent != null) {
-      Surface(
-        shape = CircleShape,
-        color = if (batteryPercent < 20) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
-        modifier = Modifier.align(Alignment.BottomEnd),
-      ) {
-        Text(
-          "${batteryPercent.toInt()}%",
-          modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSecondary,
-        )
-      }
-    }
-  }
-}
-
-private fun statusTint(status: Pet.Status): Color = Color(PetStatusPresentation.colorArgb(status))
 
 private fun subtitle(pet: Pet): String =
   when {
