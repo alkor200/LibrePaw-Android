@@ -14,9 +14,15 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
+    val appContainer = AppContainer(applicationContext)
+
     enableEdgeToEdge()
     setContent {
-      LibrePawTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      LibrePawTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+          MainNavigation(authenticationService = appContainer.authenticationService)
+        }
+      }
     }
   }
 }

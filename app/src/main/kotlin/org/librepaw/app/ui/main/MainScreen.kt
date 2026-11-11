@@ -31,6 +31,8 @@ import org.librepaw.app.ui.theme.LibrePawTheme
 fun MainScreen(
   onItemClick: (NavKey) -> Unit,
   modifier: Modifier = Modifier,
+  loggedInEmail: String? = null,
+  onLogOut: (() -> Unit)? = null,
   viewModel: MainScreenViewModel = viewModel { MainScreenViewModel(DefaultDataRepository()) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -44,7 +46,7 @@ fun MainScreen(
       }
     }
     is MainScreenUiState.Success -> {
-      MainScreen(data = state.data, modifier = modifier)
+      MainScreen(data = state.data, modifier = modifier, loggedInEmail = loggedInEmail, onLogOut = onLogOut)
     }
     is MainScreenUiState.Error -> {
       Text("Error loading data: ${state.throwable.message}")
@@ -54,7 +56,12 @@ fun MainScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MainScreen(data: List<String>, modifier: Modifier = Modifier) {
+internal fun MainScreen(
+  data: List<String>,
+  modifier: Modifier = Modifier,
+  loggedInEmail: String? = null,
+  onLogOut: (() -> Unit)? = null,
+) {
   Scaffold(
     modifier = modifier,
     topBar = {
@@ -74,12 +81,24 @@ internal fun MainScreen(data: List<String>, modifier: Modifier = Modifier) {
       modifier = Modifier.padding(innerPadding),
       verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+      if (loggedInEmail != null) {
+        Text(
+          "Logged in as $loggedInEmail",
+          modifier = Modifier.padding(16.dp, 16.dp),
+          style = MaterialTheme.typography.bodyLarge,
+        )
+      }
       data.forEach { Greeting(it) }
       Button(
         modifier = Modifier.padding(24.dp, 24.dp),
         onClick = { /* Button clicked */ }
       ) {
         Text("OK")
+      }
+      if (onLogOut != null) {
+        Button(modifier = Modifier.padding(24.dp, 0.dp), onClick = onLogOut) {
+          Text("Log Out")
+        }
       }
 
       // TODO: Extend app UI with more Jetpack Compose UI elements here

@@ -81,4 +81,11 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
+  // Networking (Traccar REST client)
+  implementation(libs.okhttp)
+  implementation(libs.kotlinx.serialization.json)
+
+  // Secure credential storage
+  implementation(libs.androidx.security.crypto)
 }
