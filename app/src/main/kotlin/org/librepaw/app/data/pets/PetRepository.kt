@@ -7,4 +7,13 @@ interface PetRepository {
 
   /** The pet's photo bytes, `null` when it has none set. */
   suspend fun fetchPhoto(pet: Pet): ByteArray?
+
+  /** What the signed-in Traccar account can actually do. */
+  suspend fun currentUserPermissions(): AccountPermissions
+
+  /** Renames the pet, i.e. its underlying Traccar device. */
+  suspend fun renamePet(petId: Int, name: String)
+
+  /** Sets (or replaces) the pet's photo. `jpegData` must already be JPEG-encoded. */
+  suspend fun setPhoto(petId: Int, jpegData: ByteArray)
 }

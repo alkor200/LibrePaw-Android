@@ -5,23 +5,51 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.FormBody
 import okhttp3.HttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 
 /**
- * A minimal Traccar REST client, authenticated via HTTP Basic Auth.
+ * A minimal Traccar REST client, authenticated via HTTP Basic Auth for ordinary JSON endpoints.
  *
- * Grows endpoint by endpoint as each feature needs it; there is no attempt
- * to model Traccar's whole API up front.
+ * A handful of endpoints (the current-session user, media/photo fetches) ignore Basic Auth and
+ * need a cookie-backed session instead, established lazily on first use (see
+ * [ensureCookieSession]) and reused by OkHttp's own in-memory cookie jar for the rest of this
+ * client's lifetime, mirroring the iOS client's own lazy `ensureCookieSession()`.
+ *
+ * Grows endpoint by endpoint as each feature needs it; there is no attempt to model Traccar's
+ * whole API up front.
  */
 class TraccarClient(private val credentials: TraccarCredentials) {
   val serverUrl: HttpUrl get() = credentials.serverUrl
 
   private val json = Json { ignoreUnknownKeys = true }
 
+  private var hasCookieSession = false
+
+  private val cookieJar =
+    object : CookieJar {
+      private val cookies = mutableMapOf<String, List<Cookie>>()
+
+      override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+        this.cookies[url.host] = cookies
+      }
+
+      override fun loadForRequest(url: HttpUrl): List<Cookie> = cookies[url.host] ?: emptyList()
+    }
+
   private val httpClient =
     OkHttpClient.Builder()
+      .cookieJar(cookieJar)
       .addInterceptor { chain ->
         val request =
           chain.request().newBuilder().header("Authorization", credentials.basicAuthHeaderValue).build()
@@ -35,31 +63,102 @@ class TraccarClient(private val credentials: TraccarCredentials) {
   /** The latest known position for every device the user can see. */
   suspend fun fetchLatestPositions(): List<TraccarPosition> = getJson("api/positions")
 
-  /** Fetches raw bytes from a Traccar-hosted URL (e.g. a device photo), with the same auth as everything else. */
-  suspend fun fetchData(url: HttpUrl): ByteArray =
-    withContext(Dispatchers.IO) {
-      try {
-        httpClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-          if (!response.isSuccessful) throw statusError(response.code)
-          response.body.bytes()
-        }
-      } catch (e: IOException) {
-        throw TraccarError.Transport(e.message ?: "unknown transport error")
-      }
+  /**
+   * The signed-in account. Needs the cookie session, not Basic Auth: `GET /api/session` returns
+   * the current session's user only when a valid session cookie is attached.
+   */
+  suspend fun fetchCurrentUser(): TraccarUser {
+    ensureCookieSession()
+    return getJson("api/session")
+  }
+
+  /** Fetches raw bytes from a Traccar-hosted URL (e.g. a device photo); needs the cookie session. */
+  suspend fun fetchData(url: HttpUrl): ByteArray {
+    ensureCookieSession()
+    val request = Request.Builder().url(url).get().build()
+    val firstAttempt = withResponse(request) { response -> if (response.code == 401) null else readBytes(response) }
+    if (firstAttempt != null) return firstAttempt
+
+    hasCookieSession = false
+    ensureCookieSession()
+    return withResponse(request, ::readBytes)
+  }
+
+  private fun readBytes(response: Response): ByteArray {
+    if (!response.isSuccessful) throw statusError(response.code)
+    return response.body.bytes()
+  }
+
+  suspend fun updateDeviceName(deviceId: Int, name: String) {
+    updateDeviceObject(deviceId) { device ->
+      val fields = device.toMutableMap()
+      fields["name"] = JsonPrimitive(name)
+      JsonObject(fields)
     }
+  }
+
+  /** Uploads a photo, then links it to the device via its `deviceImage` attribute. Returns the stored filename. */
+  suspend fun updateDeviceImage(deviceId: Int, imageData: ByteArray, contentType: String): String {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/devices/$deviceId/image").build()
+    val request = Request.Builder().url(url).post(imageData.toRequestBody(contentType.toMediaType())).build()
+    val filename =
+      withResponse(request) { response ->
+        if (!response.isSuccessful) throw statusError(response.code)
+        response.body.string()
+      }
+
+    updateDeviceObject(deviceId) { device ->
+      val attributes = (device["attributes"] as? JsonObject)?.toMutableMap() ?: mutableMapOf()
+      attributes["deviceImage"] = JsonPrimitive(filename)
+      val fields = device.toMutableMap()
+      fields["attributes"] = JsonObject(attributes)
+      JsonObject(fields)
+    }
+
+    return filename
+  }
+
+  /**
+   * Traccar's `PUT` replaces every column on a device, so a partial payload would null out
+   * whatever it omits. Reads the device as a raw JSON object (not [TraccarDevice], which only
+   * models the fields this app reads) so fields it doesn't know about round-trip untouched.
+   */
+  private suspend fun updateDeviceObject(deviceId: Int, mutate: (JsonObject) -> JsonObject) {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/devices/$deviceId").build()
+
+    val current =
+      withResponse(Request.Builder().url(url).get().build()) { response ->
+        if (!response.isSuccessful) throw statusError(response.code)
+        try {
+          json.parseToJsonElement(response.body.string()).jsonObject
+        } catch (e: SerializationException) {
+          throw TraccarError.Decoding(e.message ?: "unknown decoding error")
+        }
+      }
+
+    val updated = mutate(current)
+    val putRequest =
+      Request.Builder().url(url).put(updated.toString().toRequestBody("application/json".toMediaType())).build()
+    withResponse(putRequest) { response -> if (!response.isSuccessful) throw statusError(response.code) }
+  }
+
+  /** `POST /api/session` with form-urlencoded credentials; Traccar sets the session cookie via `Set-Cookie`. */
+  private suspend fun ensureCookieSession() {
+    if (hasCookieSession) return
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/session").build()
+    val body = FormBody.Builder().add("email", credentials.email).add("password", credentials.password).build()
+    withResponse(Request.Builder().url(url).post(body).build()) { response ->
+      if (!response.isSuccessful) throw statusError(response.code)
+      hasCookieSession = true
+    }
+  }
 
   private suspend inline fun <reified T> getJson(path: String): T {
     val url = credentials.serverUrl.newBuilder().addPathSegments(path).build()
     val body =
-      withContext(Dispatchers.IO) {
-        try {
-          httpClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-            if (!response.isSuccessful) throw statusError(response.code)
-            response.body.string()
-          }
-        } catch (e: IOException) {
-          throw TraccarError.Transport(e.message ?: "unknown transport error")
-        }
+      withResponse(Request.Builder().url(url).get().build()) { response ->
+        if (!response.isSuccessful) throw statusError(response.code)
+        response.body.string()
       }
     return try {
       json.decodeFromString(body)
@@ -67,6 +166,20 @@ class TraccarClient(private val credentials: TraccarCredentials) {
       throw TraccarError.Decoding(e.message ?: "unknown decoding error")
     }
   }
+
+  /**
+   * Executes [request] and runs [block] against its response, all on [Dispatchers.IO] — reading
+   * the response body is itself blocking I/O, so it must happen inside the same dispatcher
+   * switch as the request, not after returning to the caller's (possibly main) thread.
+   */
+  private suspend fun <T> withResponse(request: Request, block: (Response) -> T): T =
+    withContext(Dispatchers.IO) {
+      try {
+        httpClient.newCall(request).execute().use(block)
+      } catch (e: IOException) {
+        throw TraccarError.Transport(e.message ?: "unknown transport error")
+      }
+    }
 
   private fun statusError(code: Int): TraccarError =
     when (code) {

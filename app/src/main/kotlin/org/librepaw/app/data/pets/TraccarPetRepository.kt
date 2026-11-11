@@ -20,4 +20,22 @@ class TraccarPetRepository(private val client: TraccarClient) : PetRepository {
     val photoUrl = pet.photoUrl ?: return null
     return client.fetchData(photoUrl)
   }
+
+  override suspend fun currentUserPermissions(): AccountPermissions {
+    val user = client.fetchCurrentUser()
+    return AccountPermissions(
+      isAdministrator = user.administrator,
+      canManageHomes = user.administrator || !user.readonly,
+      canManageDevice = user.administrator || (!user.readonly && !user.deviceReadonly),
+      canViewExcursions = user.administrator || !user.disableReports,
+    )
+  }
+
+  override suspend fun renamePet(petId: Int, name: String) {
+    client.updateDeviceName(petId, name)
+  }
+
+  override suspend fun setPhoto(petId: Int, jpegData: ByteArray) {
+    client.updateDeviceImage(petId, jpegData, "image/jpeg")
+  }
 }

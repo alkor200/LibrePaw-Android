@@ -45,7 +45,9 @@ fun PetListScreen(
   petRepository: PetRepository,
   onPetClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: PetListViewModel = viewModel { PetListViewModel(petRepository) },
+  /** Bumped by the caller after a successful edit, so a fresh [PetListViewModel] re-fetches instead of reusing stale cached state. */
+  dataVersion: Int = 0,
+  viewModel: PetListViewModel = viewModel(key = "pet-list-$dataVersion") { PetListViewModel(petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 

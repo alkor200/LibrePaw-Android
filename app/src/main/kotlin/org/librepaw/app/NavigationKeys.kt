@@ -8,3 +8,5 @@ import kotlinx.serialization.Serializable
 @Serializable data object Login : NavKey
 
 @Serializable data class PetDetail(val petId: Int) : NavKey
+
+@Serializable data class EditPet(val petId: Int) : NavKey

@@ -13,6 +13,7 @@ import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.auth.LoginScreen
+import org.librepaw.app.ui.editpet.EditPetScreen
 import org.librepaw.app.ui.home.HomeScreen
 import org.librepaw.app.ui.petdetail.PetDetailScreen
 
@@ -21,6 +22,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
   var currentSession by remember { mutableStateOf(authenticationService.restoreSession()) }
   val backStack = rememberNavBackStack(if (currentSession != null) Main else Login)
   val petRepository = currentSession?.let { session -> remember(session) { authenticationService.makePetRepository(session) } }
+  var petDataVersion by remember { mutableStateOf(0) }
 
   fun goTo(key: NavKey) {
     backStack.clear()
@@ -55,6 +57,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
                 currentSession = null
                 goTo(Login)
               },
+              dataVersion = petDataVersion,
             )
           }
         }
@@ -64,6 +67,21 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               petId = key.petId,
               petRepository = repository,
               onBack = { backStack.removeLastOrNull() },
+              onEditClick = { pet -> backStack.add(EditPet(pet.id)) },
+              dataVersion = petDataVersion,
+            )
+          }
+        }
+        entry<EditPet> { key ->
+          petRepository?.let { repository ->
+            EditPetScreen(
+              petId = key.petId,
+              petRepository = repository,
+              onSaved = {
+                petDataVersion++
+                backStack.removeLastOrNull()
+              },
+              onCancel = { backStack.removeLastOrNull() },
             )
           }
         }

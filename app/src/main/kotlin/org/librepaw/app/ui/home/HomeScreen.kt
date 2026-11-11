@@ -39,6 +39,8 @@ fun HomeScreen(
   onPetClick: (Pet) -> Unit,
   onLogOut: () -> Unit,
   modifier: Modifier = Modifier,
+  /** Bumped after a successful pet edit, so the Pets grid and Map re-fetch instead of showing stale cached state. */
+  dataVersion: Int = 0,
 ) {
   var selectedTab by rememberSaveable { mutableStateOf(HomeTab.Map) }
 
@@ -69,12 +71,18 @@ fun HomeScreen(
   ) { innerPadding ->
     when (selectedTab) {
       HomeTab.Map ->
-        PetMapScreen(petRepository = petRepository, onPetClick = onPetClick, modifier = Modifier.padding(innerPadding))
+        PetMapScreen(
+          petRepository = petRepository,
+          onPetClick = onPetClick,
+          modifier = Modifier.padding(innerPadding),
+          dataVersion = dataVersion,
+        )
       HomeTab.Pets ->
         PetListScreen(
           petRepository = petRepository,
           onPetClick = onPetClick,
           modifier = Modifier.padding(innerPadding),
+          dataVersion = dataVersion,
         )
       HomeTab.Settings ->
         SettingsScreen(

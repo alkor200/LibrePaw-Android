@@ -1,6 +1,7 @@
 package org.librepaw.app.ui.petdetail
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,10 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.PetAvatar
@@ -41,8 +46,12 @@ fun PetDetailScreen(
   petId: Int,
   petRepository: PetRepository,
   onBack: () -> Unit,
+  onEditClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: PetDetailViewModel = viewModel(key = "pet-detail-$petId") { PetDetailViewModel(petId, petRepository) },
+  /** Bumped by the caller after a successful edit, so a fresh [PetDetailViewModel] re-fetches instead of reusing stale cached state. */
+  dataVersion: Int = 0,
+  viewModel: PetDetailViewModel =
+    viewModel(key = "pet-detail-$petId-$dataVersion") { PetDetailViewModel(petId, petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val title = (uiState as? PetDetailUiState.Loaded)?.pet?.name ?: "Pet"
@@ -95,19 +104,48 @@ fun PetDetailScreen(
             )
             Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text("Try Again") }
           }
-        is PetDetailUiState.Loaded -> PetDetailContent(pet = state.pet, petRepository = petRepository)
+        is PetDetailUiState.Loaded ->
+          PetDetailContent(
+            pet = state.pet,
+            permissions = state.permissions,
+            petRepository = petRepository,
+            onEditClick = onEditClick,
+          )
       }
     }
   }
 }
 
 @Composable
-private fun PetDetailContent(pet: Pet, petRepository: PetRepository) {
+private fun PetDetailContent(
+  pet: Pet,
+  permissions: AccountPermissions?,
+  petRepository: PetRepository,
+  onEditClick: (Pet) -> Unit,
+) {
   Column(
     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    PetAvatar(pet = pet, petRepository = petRepository, size = 96.dp, showBatteryBadge = false)
+    Box {
+      PetAvatar(pet = pet, petRepository = petRepository, size = 96.dp, showBatteryBadge = false)
+      if (permissions?.canManageDevice == true) {
+        Surface(
+          shape = CircleShape,
+          color = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.align(Alignment.BottomEnd).size(28.dp).clickable { onEditClick(pet) },
+        ) {
+          Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+              Icons.Filled.Edit,
+              contentDescription = "Edit",
+              tint = MaterialTheme.colorScheme.onPrimary,
+              modifier = Modifier.size(16.dp),
+            )
+          }
+        }
+      }
+    }
 
     Text(
       pet.name,

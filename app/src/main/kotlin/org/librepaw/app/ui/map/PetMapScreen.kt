@@ -54,7 +54,9 @@ fun PetMapScreen(
   petRepository: PetRepository,
   onPetClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: PetMapViewModel = viewModel { PetMapViewModel(petRepository) },
+  /** Bumped by the caller after a successful edit, so a fresh [PetMapViewModel] re-fetches instead of reusing stale cached state. */
+  dataVersion: Int = 0,
+  viewModel: PetMapViewModel = viewModel(key = "pet-map-$dataVersion") { PetMapViewModel(petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val styleUrl = if (LocalDarkTheme.current) DARK_STYLE_URL else LIGHT_STYLE_URL

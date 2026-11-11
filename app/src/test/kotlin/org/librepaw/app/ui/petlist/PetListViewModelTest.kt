@@ -65,4 +65,10 @@ private class FakePetRepository(private val result: Result<List<Pet>>) : PetRepo
   override suspend fun fetchPets(): List<Pet> = result.getOrThrow()
 
   override suspend fun fetchPhoto(pet: Pet): ByteArray? = null
+
+  override suspend fun currentUserPermissions() = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun renamePet(petId: Int, name: String) = throw UnsupportedOperationException("not used by this test")
+
+  override suspend fun setPhoto(petId: Int, jpegData: ByteArray) = throw UnsupportedOperationException("not used by this test")
 }
