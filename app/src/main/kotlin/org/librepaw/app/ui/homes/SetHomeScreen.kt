@@ -32,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,7 +57,6 @@ private const val HOME_CIRCLE_LINE_LAYER_ID = "home-circle-line"
 private const val MIN_RADIUS_METERS = 20.0
 private const val MAX_RADIUS_METERS = 100.0
 private const val RADIUS_STEP_METERS = 5.0
-private val HOME_CIRCLE_COLOR = Color(0xFF2E7D32)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +91,7 @@ fun SetHomeScreen(
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.background,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
           ),
       )
@@ -137,6 +135,7 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
   val canManage = viewModel.permissions?.canManageHomes == true
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
   val styleUrl = if (LocalDarkTheme.current) DARK_MAP_STYLE_URL else LIGHT_MAP_STYLE_URL
+  val homeCircleColor = MaterialTheme.colorScheme.primary.toArgb()
 
   Box(modifier = Modifier.fillMaxSize()) {
     MapLibreHost(
@@ -146,7 +145,7 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
         loadedMap.moveCamera(
           CameraUpdateFactory.newLatLngZoom(LatLng(viewModel.center.latitude, viewModel.center.longitude), 17.0)
         )
-        loadedMap.setStyle(styleUrl) { style -> addHomeCircleLayer(style) }
+        loadedMap.setStyle(styleUrl) { style -> addHomeCircleLayer(style, homeCircleColor) }
         if (canManage) {
           loadedMap.addOnCameraIdleListener {
             loadedMap.cameraPosition.target?.let { target ->
@@ -244,16 +243,16 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
 
 private fun roundToStep(value: Double): Double = Math.round(value / RADIUS_STEP_METERS) * RADIUS_STEP_METERS
 
-private fun addHomeCircleLayer(style: Style) {
+private fun addHomeCircleLayer(style: Style, homeCircleColor: Int) {
   if (style.getSource(HOME_CIRCLE_SOURCE_ID) != null) return
   style.addSource(GeoJsonSource(HOME_CIRCLE_SOURCE_ID))
   style.addLayer(
     FillLayer(HOME_CIRCLE_FILL_LAYER_ID, HOME_CIRCLE_SOURCE_ID)
-      .withProperties(PropertyFactory.fillColor(HOME_CIRCLE_COLOR.toArgb()), PropertyFactory.fillOpacity(0.25f))
+      .withProperties(PropertyFactory.fillColor(homeCircleColor), PropertyFactory.fillOpacity(0.25f))
   )
   style.addLayer(
     LineLayer(HOME_CIRCLE_LINE_LAYER_ID, HOME_CIRCLE_SOURCE_ID)
-      .withProperties(PropertyFactory.lineColor(HOME_CIRCLE_COLOR.toArgb()), PropertyFactory.lineWidth(2f))
+      .withProperties(PropertyFactory.lineColor(homeCircleColor), PropertyFactory.lineWidth(2f))
   )
 }
 

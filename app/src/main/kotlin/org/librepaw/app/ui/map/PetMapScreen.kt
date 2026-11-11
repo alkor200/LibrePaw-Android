@@ -1,5 +1,7 @@
 package org.librepaw.app.ui.map
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,12 +20,17 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.gson.JsonObject
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.data.traccar.TraccarError
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
@@ -57,7 +64,13 @@ fun PetMapScreen(
   val pets = (uiState as? PetMapUiState.Loaded)?.pets.orEmpty()
 
   Box(modifier = modifier.fillMaxSize()) {
-    PetMarkersMap(styleUrl = styleUrl, pets = pets, onPetClick = onPetClick, modifier = Modifier.fillMaxSize())
+    PetMarkersMap(
+      petRepository = petRepository,
+      styleUrl = styleUrl,
+      pets = pets,
+      onPetClick = onPetClick,
+      modifier = Modifier.fillMaxSize(),
+    )
 
     when (val state = uiState) {
       PetMapUiState.Loading ->
@@ -109,10 +122,18 @@ fun PetMapScreen(
 }
 
 @Composable
-private fun PetMarkersMap(styleUrl: String, pets: List<Pet>, onPetClick: (Pet) -> Unit, modifier: Modifier = Modifier) {
+private fun PetMarkersMap(
+  petRepository: PetRepository,
+  styleUrl: String,
+  pets: List<Pet>,
+  onPetClick: (Pet) -> Unit,
+  modifier: Modifier = Modifier,
+) {
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
   val latestPets by rememberUpdatedState(pets)
   val latestOnPetClick by rememberUpdatedState(onPetClick)
+  val fallbackColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
+  val pawColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
 
   LaunchedEffect(map) {
     val currentMap = map ?: return@LaunchedEffect
@@ -132,8 +153,11 @@ private fun PetMarkersMap(styleUrl: String, pets: List<Pet>, onPetClick: (Pet) -
 
   LaunchedEffect(map, styleUrl, pets) {
     val currentMap = map ?: return@LaunchedEffect
+    val photosByPetId = fetchPhotos(petRepository, pets)
     currentMap.setStyle(styleUrl) { style ->
-      pets.forEach { pet -> style.addImage(markerImageId(pet), PetMarkerIconFactory.icon(pet)) }
+      pets.forEach { pet ->
+        style.addImage(markerImageId(pet), PetMarkerIconFactory.icon(pet, photosByPetId[pet.id], fallbackColor, pawColor))
+      }
 
       val features =
         pets.mapNotNull { pet ->
@@ -160,6 +184,21 @@ private fun PetMarkersMap(styleUrl: String, pets: List<Pet>, onPetClick: (Pet) -
 }
 
 private fun markerImageId(pet: Pet) = "pet-${pet.id}"
+
+/** Fetches every pet's photo concurrently, decoded and keyed by pet id; `null` for a pet with no
+ * photo set or whose fetch failed, so [PetMarkerIconFactory] falls back to a paw icon for it. */
+private suspend fun fetchPhotos(petRepository: PetRepository, pets: List<Pet>): Map<Int, Bitmap?> =
+  coroutineScope {
+    pets
+      .map { pet ->
+        async {
+          val bytes = try { petRepository.fetchPhoto(pet) } catch (e: TraccarError) { null }
+          pet.id to bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+        }
+      }
+      .awaitAll()
+      .toMap()
+  }
 
 private fun fitCamera(map: MapLibreMap, pets: List<Pet>) {
   val positions = pets.mapNotNull { it.lastPosition }

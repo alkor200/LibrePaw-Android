@@ -2,7 +2,7 @@ package org.librepaw.app.ui.home
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -57,7 +57,7 @@ fun HomeScreen(
         NavigationBarItem(
           selected = selectedTab == HomeTab.Pets,
           onClick = { selectedTab = HomeTab.Pets },
-          icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+          icon = { Icon(Icons.Filled.Pets, contentDescription = null) },
           label = { Text("Pets") },
         )
         NavigationBarItem(

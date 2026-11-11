@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -66,7 +65,6 @@ import org.maplibre.geojson.Point
 
 private const val TRAIL_SOURCE_ID = "excursion-trail"
 private const val TRAIL_LAYER_ID = "excursion-trail-line"
-private val TRAIL_COLOR = Color(0xFF2E7D32)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +87,7 @@ fun ExcursionDetailScreen(
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.background,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
           ),
       )
@@ -162,6 +160,7 @@ private fun DetailStatTile(icon: ImageVector, label: String, value: String, modi
 private fun MapCard(viewModel: ExcursionDetailViewModel, modifier: Modifier = Modifier) {
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
   val styleUrl = if (LocalDarkTheme.current) DARK_MAP_STYLE_URL else LIGHT_MAP_STYLE_URL
+  val trailColor = MaterialTheme.colorScheme.primary.toArgb()
 
   Surface(modifier = modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceVariant) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -169,14 +168,14 @@ private fun MapCard(viewModel: ExcursionDetailViewModel, modifier: Modifier = Mo
         modifier = Modifier.fillMaxSize(),
         onMapReady = { loadedMap ->
           map = loadedMap
-          loadedMap.setStyle(styleUrl) { style -> addTrailLayer(style) }
+          loadedMap.setStyle(styleUrl) { style -> addTrailLayer(style, trailColor) }
         },
       )
 
       LaunchedEffect(map, viewModel.trail, styleUrl) {
         val currentMap = map ?: return@LaunchedEffect
         currentMap.setStyle(styleUrl) { style ->
-          addTrailLayer(style)
+          addTrailLayer(style, trailColor)
           updateTrail(style, viewModel.trail)
         }
         fitCameraToTrail(currentMap, viewModel.trail)
@@ -214,13 +213,13 @@ private fun MapCard(viewModel: ExcursionDetailViewModel, modifier: Modifier = Mo
   }
 }
 
-private fun addTrailLayer(style: Style) {
+private fun addTrailLayer(style: Style, trailColor: Int) {
   if (style.getSource(TRAIL_SOURCE_ID) != null) return
   style.addSource(GeoJsonSource(TRAIL_SOURCE_ID))
   style.addLayer(
     LineLayer(TRAIL_LAYER_ID, TRAIL_SOURCE_ID)
       .withProperties(
-        PropertyFactory.lineColor(TRAIL_COLOR.toArgb()),
+        PropertyFactory.lineColor(trailColor),
         PropertyFactory.lineWidth(4f),
         PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
         PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),

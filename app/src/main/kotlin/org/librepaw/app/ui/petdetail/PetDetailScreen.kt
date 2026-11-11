@@ -94,7 +94,7 @@ fun PetDetailScreen(
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.background,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
           ),
       )
@@ -194,43 +194,11 @@ private fun PetDetailContent(
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
-    Column(
-      modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-      statTiles(pet, viewModel).chunked(2).forEach { rowTiles ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-          rowTiles.forEach { tile ->
-            StatTile(
-              icon = tile.icon,
-              label = tile.label,
-              value = tile.value,
-              modifier = Modifier.weight(1f),
-              onRecalculate = tile.onRecalculate,
-              isRecalculating = viewModel.isRecalculating,
-            )
-          }
-          if (rowTiles.size == 1) Box(modifier = Modifier.weight(1f))
-        }
-      }
-    }
-
-    Surface(
-      modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-      shape = MaterialTheme.shapes.medium,
-      color = MaterialTheme.colorScheme.surfaceVariant,
-    ) {
-      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(locationText(pet), modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
-      }
-    }
-
     // Trail and Excursions are both built from Traccar's reports endpoint, hidden when the
     // account has reports disabled rather than leading somewhere that would just error.
     if (permissions?.canViewExcursions == true) {
       Surface(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant,
       ) {
@@ -261,7 +229,7 @@ private fun PetDetailContent(
     }
 
     Surface(
-      modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+      modifier = Modifier.fillMaxWidth().padding(top = if (permissions?.canViewExcursions == true) 12.dp else 24.dp),
       shape = MaterialTheme.shapes.medium,
       color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
@@ -291,6 +259,38 @@ private fun PetDetailContent(
           Text("Share ${pet.name}", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
           Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+      }
+    }
+
+    Column(
+      modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      statTiles(pet, viewModel).chunked(2).forEach { rowTiles ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          rowTiles.forEach { tile ->
+            StatTile(
+              icon = tile.icon,
+              label = tile.label,
+              value = tile.value,
+              modifier = Modifier.weight(1f),
+              onRecalculate = tile.onRecalculate,
+              isRecalculating = viewModel.isRecalculating,
+            )
+          }
+          if (rowTiles.size == 1) Box(modifier = Modifier.weight(1f))
+        }
+      }
+    }
+
+    Surface(
+      modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+      shape = MaterialTheme.shapes.medium,
+      color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(locationText(pet), modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
       }
     }
   }
