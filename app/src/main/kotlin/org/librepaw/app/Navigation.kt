@@ -14,6 +14,8 @@ import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.auth.LoginScreen
 import org.librepaw.app.ui.editpet.EditPetScreen
+import org.librepaw.app.ui.excursions.ExcursionDetailScreen
+import org.librepaw.app.ui.excursions.ExcursionsScreen
 import org.librepaw.app.ui.home.HomeScreen
 import org.librepaw.app.ui.homes.HomesScreen
 import org.librepaw.app.ui.homes.SetHomeScreen
@@ -71,6 +73,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               onBack = { backStack.removeLastOrNull() },
               onEditClick = { pet -> backStack.add(EditPet(pet.id)) },
               onHomesClick = { pet -> backStack.add(Homes(pet.id, pet.name)) },
+              onExcursionsClick = { pet -> backStack.add(Excursions(pet.id, pet.name)) },
               dataVersion = petDataVersion,
             )
           }
@@ -116,6 +119,27 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
                 backStack.removeLastOrNull()
               },
               onCancel = { backStack.removeLastOrNull() },
+            )
+          }
+        }
+        entry<Excursions> { key ->
+          petRepository?.let { repository ->
+            ExcursionsScreen(
+              petId = key.petId,
+              petName = key.petName,
+              petRepository = repository,
+              onBack = { backStack.removeLastOrNull() },
+              onExcursionClick = { excursion -> backStack.add(ExcursionDetail(key.petId, excursion)) },
+            )
+          }
+        }
+        entry<ExcursionDetail> { key ->
+          petRepository?.let { repository ->
+            ExcursionDetailScreen(
+              petId = key.petId,
+              excursion = key.excursion,
+              petRepository = repository,
+              onBack = { backStack.removeLastOrNull() },
             )
           }
         }

@@ -20,13 +20,16 @@ data class Excursion(
   val durationMillis: Long?
     get() = endTime?.minus(startTime)
 
+  /** `null` until both a duration and a distance are known (i.e. the excursion has closed). */
+  val averageSpeedKmh: Double?
+    get() {
+      val duration = durationMillis ?: return null
+      val distance = distanceMeters ?: return null
+      if (duration <= 0) return null
+      return (distance / 1000.0) / (duration / 3_600_000.0)
+    }
+
   /** A rough heuristic (sustained average speed), not an exact replica of any particular formula. */
   val isLikelyVehicleTrip: Boolean
-    get() {
-      val duration = durationMillis ?: return false
-      val distance = distanceMeters ?: return false
-      if (duration <= 0) return false
-      val averageSpeedKmh = (distance / 1000.0) / (duration / 3_600_000.0)
-      return averageSpeedKmh > 15.0
-    }
+    get() = (averageSpeedKmh ?: 0.0) > 15.0
 }
