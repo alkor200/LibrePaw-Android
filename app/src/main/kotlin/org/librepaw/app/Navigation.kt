@@ -20,6 +20,7 @@ import org.librepaw.app.ui.home.HomeScreen
 import org.librepaw.app.ui.homes.HomesScreen
 import org.librepaw.app.ui.homes.SetHomeScreen
 import org.librepaw.app.ui.petdetail.PetDetailScreen
+import org.librepaw.app.ui.trail.TrailScreen
 
 @Composable
 fun MainNavigation(authenticationService: AuthenticationService, appearancePreferences: AppearancePreferences) {
@@ -74,6 +75,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               onEditClick = { pet -> backStack.add(EditPet(pet.id)) },
               onHomesClick = { pet -> backStack.add(Homes(pet.id, pet.name)) },
               onExcursionsClick = { pet -> backStack.add(Excursions(pet.id, pet.name)) },
+              onTrailClick = { pet -> backStack.add(Trail(pet.id, pet.name)) },
               dataVersion = petDataVersion,
             )
           }
@@ -140,6 +142,17 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               excursion = key.excursion,
               petRepository = repository,
               onBack = { backStack.removeLastOrNull() },
+            )
+          }
+        }
+        entry<Trail> { key ->
+          petRepository?.let { repository ->
+            TrailScreen(
+              petId = key.petId,
+              petName = key.petName,
+              petRepository = repository,
+              onBack = { backStack.removeLastOrNull() },
+              onExcursionClick = { excursion -> backStack.add(ExcursionDetail(key.petId, excursion)) },
             )
           }
         }

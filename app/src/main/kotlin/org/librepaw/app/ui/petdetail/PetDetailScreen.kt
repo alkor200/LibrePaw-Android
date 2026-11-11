@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -60,6 +61,7 @@ fun PetDetailScreen(
   onEditClick: (Pet) -> Unit,
   onHomesClick: (Pet) -> Unit,
   onExcursionsClick: (Pet) -> Unit,
+  onTrailClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
   /** Bumped by the caller after a successful edit, so a fresh [PetDetailViewModel] re-fetches instead of reusing stale cached state. */
   dataVersion: Int = 0,
@@ -126,6 +128,7 @@ fun PetDetailScreen(
             onEditClick = onEditClick,
             onHomesClick = onHomesClick,
             onExcursionsClick = onExcursionsClick,
+            onTrailClick = onTrailClick,
           )
       }
     }
@@ -141,6 +144,7 @@ private fun PetDetailContent(
   onEditClick: (Pet) -> Unit,
   onHomesClick: (Pet) -> Unit,
   onExcursionsClick: (Pet) -> Unit,
+  onTrailClick: (Pet) -> Unit,
 ) {
   Column(
     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -211,6 +215,21 @@ private fun PetDetailContent(
     // Trail and Excursions are both built from Traccar's reports endpoint, hidden when the
     // account has reports disabled rather than leading somewhere that would just error.
     if (permissions?.canViewExcursions == true) {
+      Surface(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth().clickable { onTrailClick(pet) }.padding(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Icon(Icons.Filled.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+          Text("Trail", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+          Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+
       Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         shape = MaterialTheme.shapes.medium,
