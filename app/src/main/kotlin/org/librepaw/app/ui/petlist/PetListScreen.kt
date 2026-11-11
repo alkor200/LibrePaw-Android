@@ -49,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.PetStatusPresentation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -247,19 +248,7 @@ private fun PetAvatar(pet: Pet, petRepository: PetRepository) {
   }
 }
 
-private fun statusTint(status: Pet.Status): Color =
-  when (status) {
-    Pet.Status.ONLINE -> Color(0xFF2E7D32)
-    Pet.Status.OFFLINE -> Color(0xFF9E9E9E)
-    Pet.Status.UNKNOWN -> Color(0xFFFF8F00)
-  }
-
-private fun statusLabel(status: Pet.Status): String =
-  when (status) {
-    Pet.Status.ONLINE -> "Online"
-    Pet.Status.OFFLINE -> "Offline"
-    Pet.Status.UNKNOWN -> "Unknown"
-  }
+private fun statusTint(status: Pet.Status): Color = Color(PetStatusPresentation.colorArgb(status))
 
 private fun subtitle(pet: Pet): String =
   when {
@@ -267,5 +256,5 @@ private fun subtitle(pet: Pet): String =
     pet.lastSeenAt != null ->
       DateUtils.getRelativeTimeSpanString(pet.lastSeenAt, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS)
         .toString()
-    else -> statusLabel(pet.status)
+    else -> PetStatusPresentation.label(pet.status)
   }

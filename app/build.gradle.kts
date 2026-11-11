@@ -89,4 +89,7 @@ dependencies {
 
   // Secure credential storage
   implementation(libs.androidx.security.crypto)
+
+  // Map (OpenFreeMap tiles, see ADR-0028 on the iOS side)
+  implementation(libs.maplibre.android.sdk)
 }
