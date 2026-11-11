@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -62,6 +63,7 @@ fun PetDetailScreen(
   onHomesClick: (Pet) -> Unit,
   onExcursionsClick: (Pet) -> Unit,
   onTrailClick: (Pet) -> Unit,
+  onSharePetClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
   /** Bumped by the caller after a successful edit, so a fresh [PetDetailViewModel] re-fetches instead of reusing stale cached state. */
   dataVersion: Int = 0,
@@ -129,6 +131,7 @@ fun PetDetailScreen(
             onHomesClick = onHomesClick,
             onExcursionsClick = onExcursionsClick,
             onTrailClick = onTrailClick,
+            onSharePetClick = onSharePetClick,
           )
       }
     }
@@ -145,6 +148,7 @@ private fun PetDetailContent(
   onHomesClick: (Pet) -> Unit,
   onExcursionsClick: (Pet) -> Unit,
   onTrailClick: (Pet) -> Unit,
+  onSharePetClick: (Pet) -> Unit,
 ) {
   Column(
     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -258,6 +262,25 @@ private fun PetDetailContent(
         Icon(Icons.Filled.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Text("${pet.name}'s Homes", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+    }
+
+    // Sharing stays admin-only: granting another Traccar account access to a device requires an
+    // administrator server-side, so the entry point is hidden rather than leading somewhere useless.
+    if (permissions?.isAdministrator == true) {
+      Surface(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth().clickable { onSharePetClick(pet) }.padding(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+          Text("Share ${pet.name}", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+          Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
       }
     }
   }

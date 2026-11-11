@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -20,6 +21,7 @@ import org.librepaw.app.ui.home.HomeScreen
 import org.librepaw.app.ui.homes.HomesScreen
 import org.librepaw.app.ui.homes.SetHomeScreen
 import org.librepaw.app.ui.petdetail.PetDetailScreen
+import org.librepaw.app.ui.sharepet.SharePetScreen
 import org.librepaw.app.ui.trail.TrailScreen
 
 @Composable
@@ -28,10 +30,24 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
   val backStack = rememberNavBackStack(if (currentSession != null) Main else Login)
   val petRepository = currentSession?.let { session -> remember(session) { authenticationService.makePetRepository(session) } }
   var petDataVersion by remember { mutableStateOf(0) }
+  val viewModelStoreOwner = LocalViewModelStoreOwner.current
 
   fun goTo(key: NavKey) {
     backStack.clear()
     backStack.add(key)
+  }
+
+  /**
+   * Every screen's `viewModel(key = ...)` is keyed by petId/dataVersion, never by session
+   * identity, so switching accounts within the same process (log out, then log back in as a
+   * different user) would otherwise leave a screen like PetDetail showing a ViewModel instance
+   * still holding the previous session's permissions (e.g. an admin-only action staying visible
+   * for a non-admin account that happens to view the same pet). Clearing the whole store on every
+   * session transition guarantees every screen rebuilds fresh against the new session.
+   */
+  fun switchSession(newSession: StoredSession?) {
+    viewModelStoreOwner?.viewModelStore?.clear()
+    currentSession = newSession
   }
 
   NavDisplay(
@@ -43,7 +59,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
           LoginScreen(
             authenticationService = authenticationService,
             onLoggedIn = { session: StoredSession ->
-              currentSession = session
+              switchSession(session)
               goTo(Main)
             },
           )
@@ -59,7 +75,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               onPetClick = { pet -> backStack.add(PetDetail(pet.id)) },
               onLogOut = {
                 authenticationService.logOut()
-                currentSession = null
+                switchSession(null)
                 goTo(Login)
               },
               dataVersion = petDataVersion,
@@ -76,6 +92,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               onHomesClick = { pet -> backStack.add(Homes(pet.id, pet.name)) },
               onExcursionsClick = { pet -> backStack.add(Excursions(pet.id, pet.name)) },
               onTrailClick = { pet -> backStack.add(Trail(pet.id, pet.name)) },
+              onSharePetClick = { pet -> backStack.add(SharePet(pet.id, pet.name)) },
               dataVersion = petDataVersion,
             )
           }
@@ -153,6 +170,17 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
               petRepository = repository,
               onBack = { backStack.removeLastOrNull() },
               onExcursionClick = { excursion -> backStack.add(ExcursionDetail(key.petId, excursion)) },
+            )
+          }
+        }
+        entry<SharePet> { key ->
+          petRepository?.let { repository ->
+            SharePetScreen(
+              petId = key.petId,
+              petName = key.petName,
+              petRepository = repository,
+              onShared = { backStack.removeLastOrNull() },
+              onCancel = { backStack.removeLastOrNull() },
             )
           }
         }
