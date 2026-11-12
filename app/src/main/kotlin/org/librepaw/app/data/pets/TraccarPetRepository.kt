@@ -284,6 +284,16 @@ class TraccarPetRepository(
      * followed by a long enough quiet gap, treating that as the excursion's true end even without a
      * real `geofenceEnter` event (a tracker's own firmware sleep mode can trigger a few meters short
      * of the boundary).
+     *
+     * Requires every later position in the trail to also stay within that same slack: a tracker that
+     * reports a stale, buffered fix near home (confirmed live against a real device: a TLT2H fix whose
+     * `fixTime` lagged its `deviceTime`/`serverTime` by hours) can otherwise look identical to a real
+     * homecoming, even though the trail resumes with the pet clearly elsewhere once reporting catches
+     * up, e.g. a multi-hour gap followed by a continuous walk back from hundreds of meters away ending
+     * at the real `geofenceEnter`. Without this check, the excursion gets truncated to near zero right
+     * where it started, silently discarding everything real that happened afterward. A quiet gap with
+     * nothing at all following it (the trail simply ends there) still passes trivially, since there's
+     * nothing left to contradict it, matching the original tracker-fell-asleep scenario this exists for.
      */
     fun firstHomecomingPause(
       trail: List<TraccarPosition>,
@@ -292,15 +302,20 @@ class TraccarPetRepository(
       minimumQuietGapMillis: Long = QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS,
     ): Homecoming? {
       val sorted = trail.sortedBy { TraccarDates.parse(it.fixTime) ?: 0L }
+      fun isNearAnyHome(position: TraccarPosition): Boolean {
+        val coordinate = Coordinate(position.latitude, position.longitude)
+        return homes.any { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters }
+      }
       for (index in sorted.indices) {
         val position = sorted[index]
         val coordinate = Coordinate(position.latitude, position.longitude)
         val nearestHome =
           homes.firstOrNull { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters } ?: continue
         val positionTime = TraccarDates.parse(position.fixTime) ?: 0L
-        val nextTime = sorted.getOrNull(index + 1)?.let { TraccarDates.parse(it.fixTime) }
+        val remainder = sorted.subList(index + 1, sorted.size)
+        val nextTime = remainder.firstOrNull()?.let { TraccarDates.parse(it.fixTime) }
         val gap = if (nextTime != null) nextTime - positionTime else Long.MAX_VALUE
-        if (gap >= minimumQuietGapMillis) {
+        if (gap >= minimumQuietGapMillis && remainder.all(::isNearAnyHome)) {
           return Homecoming(positionTime, nearestHome.id)
         }
       }

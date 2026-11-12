@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.librepaw.app.data.traccar.TraccarDates
 import org.librepaw.app.data.traccar.TraccarEvent
 import org.librepaw.app.data.traccar.TraccarPosition
 
@@ -105,6 +106,29 @@ class TraccarPetRepositoryTest {
         position(0.0001, 0.0001, "2024-01-01T10:01:00.000+00:00"),
       )
     assertEquals(1, TraccarPetRepository.firstHomecomingPause(trail, listOf(home))?.homeId)
+  }
+
+  @Test
+  fun firstHomecomingPause_laterMovesAwayAgain_rejectsEarlierCandidate() {
+    // Confirmed live against a real tracker: a stale/buffered fix can land near home with a long
+    // quiet gap (the device's own `fixTime` lagging its `deviceTime`/`serverTime` by hours), yet the
+    // trail then resumes with the pet clearly far away again once reporting catches up, e.g. a
+    // multi-hour gap followed by a continuous walk home from hundreds of meters out. The earlier,
+    // first-looking-near-home position was never a genuine homecoming; this must reject it and find
+    // the real one instead, rather than truncating the whole excursion down to nearly nothing.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 50.0)
+    val trail =
+      listOf(
+        position(0.0001, 0.0001, "2024-01-01T10:00:00.000+00:00"), // near home, but a false signal
+        // 10-minute gap, would have passed the old quiet-gap-only check
+        position(0.0, 1.0, "2024-01-01T10:10:00.000+00:00"), // clearly far from home again
+        position(0.0001, 0.0001, "2024-01-01T10:20:00.000+00:00"), // the real homecoming, trail ends here
+      )
+
+    val homecoming = TraccarPetRepository.firstHomecomingPause(trail, listOf(home))
+
+    assertEquals(1, homecoming?.homeId)
+    assertEquals(TraccarDates.parse("2024-01-01T10:20:00.000+00:00"), homecoming?.fixTime)
   }
 
   // MARK: - shouldPreferHomecoming
