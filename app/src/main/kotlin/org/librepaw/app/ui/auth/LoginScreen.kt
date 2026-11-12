@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -81,6 +85,13 @@ private fun LoginForm(
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     Spacer(Modifier.height(48.dp))
+    Icon(
+      Icons.Filled.Pets,
+      contentDescription = null,
+      tint = MaterialTheme.colorScheme.primary,
+      modifier = Modifier.size(56.dp),
+    )
+    Spacer(Modifier.height(12.dp))
     Text("LibrePaw", style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(32.dp))
 
