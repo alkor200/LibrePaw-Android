@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.librepaw.app.data.traccar.TraccarDates
 import org.librepaw.app.data.traccar.TraccarEvent
 import org.librepaw.app.data.traccar.TraccarPosition
 
@@ -136,6 +137,45 @@ class TraccarPetRepositoryTest {
       )
 
     assertEquals(1, TraccarPetRepository.firstHomecomingPause(trail, listOf(home), requireStaysHomeAfterward = true)?.homeId)
+  }
+
+  @Test
+  fun firstHomecomingPause_singlePositionJustLeft_notEnoughTimeElapsed_doesNotCountYet() {
+    // Checking the app moments after leaving (e.g. 50m from the front door): exactly one position
+    // has been recorded so far, near home. Without measuring its gap against the real current time,
+    // "nothing recorded after it yet" would default to an infinite gap and look exactly like a
+    // homecoming, even though barely any time has actually passed.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 40.0)
+    val exitTime = TraccarDates.parse("2024-01-01T10:00:00.000+00:00")!!
+    val trail = listOf(position(0.0004, 0.0004, "2024-01-01T10:00:00.000+00:00")) // ~50m from home
+
+    val homecoming =
+      TraccarPetRepository.firstHomecomingPause(
+        trail,
+        listOf(home),
+        requireStaysHomeAfterward = true,
+        trailEndTimeMillis = exitTime + 30_000, // only 30 seconds have actually elapsed
+      )
+
+    assertNull(homecoming)
+  }
+
+  @Test
+  fun firstHomecomingPause_singlePositionNearHome_enoughTimeElapsed_counts() {
+    // Same shape, but a genuine 6 minutes have now passed with nothing further reported.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 40.0)
+    val exitTime = TraccarDates.parse("2024-01-01T10:00:00.000+00:00")!!
+    val trail = listOf(position(0.0004, 0.0004, "2024-01-01T10:00:00.000+00:00"))
+
+    val homecoming =
+      TraccarPetRepository.firstHomecomingPause(
+        trail,
+        listOf(home),
+        requireStaysHomeAfterward = true,
+        trailEndTimeMillis = exitTime + 6 * 60_000,
+      )
+
+    assertEquals(1, homecoming?.homeId)
   }
 
   @Test

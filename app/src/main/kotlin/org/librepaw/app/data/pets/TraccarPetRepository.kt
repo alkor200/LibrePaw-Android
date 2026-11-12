@@ -178,9 +178,15 @@ class TraccarPetRepository(
   private suspend fun makeExcursion(petId: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: List<HomeGeofence>): Excursion {
     val exitTime = TraccarDates.parse(exit.eventTime) ?: 0L
     val fetchedEndTime = enter?.eventTime?.let(TraccarDates::parse)
+    // Also the bound a trailing position's "quiet gap" is measured against when nothing newer has
+    // been recorded yet (see firstHomecomingPause): for a still-open excursion this is genuinely
+    // "now", not an unconditional pass, since a single position moments after leaving (e.g. checking
+    // the app 50m from the front door) would otherwise look exactly like an infinitely long silence
+    // purely because a second position hasn't streamed in yet, not because the pet actually stopped.
+    val trailEndTime = fetchedEndTime ?: System.currentTimeMillis()
     val fullTrail =
       try {
-        client.fetchPositionHistory(petId, exitTime, fetchedEndTime ?: System.currentTimeMillis())
+        client.fetchPositionHistory(petId, exitTime, trailEndTime)
       } catch (e: TraccarError) {
         emptyList()
       }
@@ -196,7 +202,13 @@ class TraccarPetRepository(
     // separately-reopened excursion's data bleeding in (see the already-closed branch below). Once a
     // real enter event exists, the original, simpler check applies: that case is already bounded by
     // two real Traccar events, confirmed live against a real tracker's multi-hour buffering delay.
-    val homecoming = firstHomecomingPause(fullTrail, homes, requireStaysHomeAfterward = fetchedEndTime == null)
+    val homecoming =
+      firstHomecomingPause(
+        fullTrail,
+        homes,
+        requireStaysHomeAfterward = fetchedEndTime == null,
+        trailEndTimeMillis = trailEndTime,
+      )
     if (homecoming != null && shouldPreferHomecoming(homecoming, fetchedEndTime)) {
       endTime = homecoming.fixTime
       endHomeId = homecoming.homeId
@@ -299,6 +311,15 @@ class TraccarPetRepository(
      * walk — and since Traccar hasn't closed this excursion yet, the real enter event that eventually
      * arrives would have no exit left to pair with (the cached, too-early closure already consumed
      * it), silently losing the whole walk rather than just mis-timing it.
+     *
+     * [trailEndTimeMillis] is what a trailing position (one with nothing recorded after it yet)
+     * measures its own "quiet gap" against, instead of treating that as an unconditional, infinite
+     * pass: for a still-open excursion that bound is genuinely "now" (see [makeExcursion]), since a
+     * single position moments after leaving (e.g. checking the app 50m from the front door, with no
+     * second fix having streamed in yet) would otherwise look exactly like an infinitely long silence
+     * purely from the absence of more data so far, not because the pet actually went quiet. For an
+     * already-closed pair it's the real enter event's own time, matching the original, validated
+     * tracker-fell-asleep scenario (confirmed live: nothing else was ever recorded before that event).
      */
     fun firstHomecomingPause(
       trail: List<TraccarPosition>,
@@ -306,6 +327,7 @@ class TraccarPetRepository(
       proximitySlackMeters: Double = HOME_PROXIMITY_SLACK_METERS,
       minimumQuietGapMillis: Long = QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS,
       requireStaysHomeAfterward: Boolean = false,
+      trailEndTimeMillis: Long = Long.MAX_VALUE,
     ): Homecoming? {
       val sorted = trail.sortedBy { TraccarDates.parse(it.fixTime) ?: 0L }
       fun isNearAnyHome(position: TraccarPosition): Boolean {
@@ -319,8 +341,8 @@ class TraccarPetRepository(
           homes.firstOrNull { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters } ?: continue
         val positionTime = TraccarDates.parse(position.fixTime) ?: 0L
         val remainder = sorted.subList(index + 1, sorted.size)
-        val nextTime = remainder.firstOrNull()?.let { TraccarDates.parse(it.fixTime) }
-        val gap = if (nextTime != null) nextTime - positionTime else Long.MAX_VALUE
+        val nextTime = remainder.firstOrNull()?.let { TraccarDates.parse(it.fixTime) } ?: trailEndTimeMillis
+        val gap = nextTime - positionTime
         if (gap >= minimumQuietGapMillis && (!requireStaysHomeAfterward || remainder.all(::isNearAnyHome))) {
           return Homecoming(positionTime, nearestHome.id)
         }
