@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Battery4Bar
 import androidx.compose.material.icons.filled.Battery6Bar
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
@@ -77,6 +78,7 @@ fun PetDetailScreen(
   onTrailClick: (Pet) -> Unit,
   onSharePetClick: (Pet) -> Unit,
   onViewOnMapClick: (Pet) -> Unit,
+  onFindPetClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
   /** Bumped by the caller after a successful edit, so a fresh [PetDetailViewModel] re-fetches instead of reusing stale cached state. */
   dataVersion: Int = 0,
@@ -146,6 +148,7 @@ fun PetDetailScreen(
             onTrailClick = onTrailClick,
             onSharePetClick = onSharePetClick,
             onViewOnMapClick = onViewOnMapClick,
+            onFindPetClick = onFindPetClick,
           )
       }
     }
@@ -164,6 +167,7 @@ private fun PetDetailContent(
   onTrailClick: (Pet) -> Unit,
   onSharePetClick: (Pet) -> Unit,
   onViewOnMapClick: (Pet) -> Unit,
+  onFindPetClick: (Pet) -> Unit,
 ) {
   val context = LocalContext.current
   Column(
@@ -217,6 +221,7 @@ private fun PetDetailContent(
           onClick = { NavigationLauncher.navigateTo(context, position.latitude, position.longitude, pet.name) },
         )
         ActionRow(icon = Icons.Filled.Map, label = "View on Map", onClick = { onViewOnMapClick(pet) })
+        ActionRow(icon = Icons.Filled.Explore, label = "Find ${pet.name}", onClick = { onFindPetClick(pet) })
       }
       if (permissions?.canViewExcursions == true) {
         ActionRow(icon = Icons.Filled.Route, label = "Trail", onClick = { onTrailClick(pet) })

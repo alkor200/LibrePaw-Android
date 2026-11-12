@@ -22,4 +22,6 @@ import org.librepaw.app.data.pets.Excursion
 
 @Serializable data class Trail(val petId: Int, val petName: String) : NavKey
 
+@Serializable data class Find(val petId: Int, val petName: String) : NavKey
+
 @Serializable data class SharePet(val petId: Int, val petName: String) : NavKey

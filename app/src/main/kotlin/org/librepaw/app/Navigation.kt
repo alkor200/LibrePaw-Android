@@ -21,6 +21,7 @@ import org.librepaw.app.ui.auth.LoginScreen
 import org.librepaw.app.ui.editpet.EditPetScreen
 import org.librepaw.app.ui.excursions.ExcursionDetailScreen
 import org.librepaw.app.ui.excursions.ExcursionsScreen
+import org.librepaw.app.ui.find.FindPetScreen
 import org.librepaw.app.ui.home.AppBottomBar
 import org.librepaw.app.ui.home.HomeScreen
 import org.librepaw.app.ui.home.HomeTab
@@ -128,7 +129,18 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
                   selectedTab = HomeTab.Map
                   goTo(Main)
                 },
+                onFindPetClick = { pet -> backStack.add(Find(pet.id, pet.name)) },
                 dataVersion = petDataVersion,
+              )
+            }
+          }
+          entry<Find> { key ->
+            petRepository?.let { repository ->
+              FindPetScreen(
+                petId = key.petId,
+                petName = key.petName,
+                petRepository = repository,
+                onBack = { backStack.removeLastOrNull() },
               )
             }
           }

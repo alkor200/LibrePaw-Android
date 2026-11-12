@@ -19,4 +19,15 @@ data class Coordinate(val latitude: Double, val longitude: Double) {
     val c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return earthRadiusMeters * c
   }
+
+  /** Initial compass bearing to [other], in degrees from true north, normalized to `[0, 360)`. */
+  fun initialBearingDegrees(to: Coordinate): Double {
+    val latRad1 = Math.toRadians(latitude)
+    val latRad2 = Math.toRadians(to.latitude)
+    val deltaLon = Math.toRadians(to.longitude - longitude)
+    val y = sin(deltaLon) * cos(latRad2)
+    val x = cos(latRad1) * sin(latRad2) - sin(latRad1) * cos(latRad2) * cos(deltaLon)
+    val bearing = Math.toDegrees(atan2(y, x))
+    return (bearing + 360) % 360
+  }
 }
