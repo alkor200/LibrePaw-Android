@@ -1,13 +1,14 @@
 package org.librepaw.app
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation3.runtime.NavKey
@@ -63,22 +64,13 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
     currentSession = newSession
   }
 
-  Scaffold(
-    bottomBar = {
-      // Hidden on Login: there's nothing to switch tabs between before signing in.
-      if (currentSession != null) {
-        AppBottomBar(
-          selectedTab = selectedTab,
-          onTabSelected = { tab ->
-            selectedTab = tab
-            goTo(Main)
-          },
-        )
-      }
-    }
-  ) { innerPadding ->
+  // A plain Box, not a Scaffold: a Scaffold's bottomBar slot reserves its own full-width,
+  // solidly-colored strip for the bar, which would hide whatever content (the map, a scrolled
+  // list) sits directly behind it. Overlaying the bar on top of full-size content instead means
+  // only the pill itself is opaque, everything else around it stays genuinely transparent.
+  Box(modifier = Modifier.fillMaxSize()) {
     NavDisplay(
-      modifier = Modifier.padding(innerPadding),
+      modifier = Modifier.fillMaxSize(),
       backStack = backStack,
       onBack = { backStack.removeLastOrNull() },
       entryProvider =
@@ -233,5 +225,17 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
           }
         },
     )
+
+    // Hidden on Login: there's nothing to switch tabs between before signing in.
+    if (currentSession != null) {
+      AppBottomBar(
+        selectedTab = selectedTab,
+        onTabSelected = { tab ->
+          selectedTab = tab
+          goTo(Main)
+        },
+        modifier = Modifier.align(Alignment.BottomCenter),
+      )
+    }
   }
 }

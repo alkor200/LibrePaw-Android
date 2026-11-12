@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -205,6 +206,19 @@ private fun PetDetailContent(
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
+    // Its own standalone, full-width button below the header rather than a row in the actions
+    // list below, same as iOS's own findButton.
+    if (pet.lastPosition != null) {
+      Button(
+        onClick = { onFindPetClick(pet) },
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+        contentPadding = PaddingValues(vertical = 14.dp),
+      ) {
+        Icon(Icons.Filled.Explore, contentDescription = null, modifier = Modifier.size(20.dp))
+        Text("Find ${pet.name}", modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium)
+      }
+    }
+
     Column(
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -221,7 +235,6 @@ private fun PetDetailContent(
           onClick = { NavigationLauncher.navigateTo(context, position.latitude, position.longitude, pet.name) },
         )
         ActionRow(icon = Icons.Filled.Map, label = "View on Map", onClick = { onViewOnMapClick(pet) })
-        ActionRow(icon = Icons.Filled.Explore, label = "Find ${pet.name}", onClick = { onFindPetClick(pet) })
       }
       if (permissions?.canViewExcursions == true) {
         ActionRow(icon = Icons.Filled.Route, label = "Trail", onClick = { onTrailClick(pet) })
