@@ -4,7 +4,11 @@ The Android counterpart to [LibrePaw](https://github.com/alkor200/LibrePaw), an
 open source pet GPS tracker client for self-hosted
 [Traccar](https://www.traccar.org/) servers.
 
-This is a fresh scaffold, not yet a port of the iOS app's features.
+A feature-complete port of the iOS app: Authentication, Map, Pets, Pet
+Detail (Edit/Share), Homes, Excursions, Trail, Settings, a Find Pet
+compass screen, Navigate/View-on-Map, and a persistent floating bottom
+bar. Developed independently from the iOS app going forward rather than
+as a 1:1 mirror, the two are expected to drift apart over time.
 
 ## Stack
 

@@ -12,4 +12,6 @@
 /captures
 .externalNativeBuild
 .cxx
+CLAUDE.local.md
+/.claude-local/
 local.properties
