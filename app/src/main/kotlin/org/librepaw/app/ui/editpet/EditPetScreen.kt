@@ -58,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.max
 import kotlin.math.roundToInt
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.home.BottomBarClearance
 
 private val CROP_DIAMETER = 220.dp
 
@@ -141,7 +142,8 @@ fun EditPetScreen(
           }
         is EditPetUiState.Loaded ->
           Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+            modifier =
+              Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = BottomBarClearance),
             horizontalAlignment = Alignment.CenterHorizontally,
           ) {
             val displayedBitmap = viewModel.selectedImage ?: state.currentPhoto

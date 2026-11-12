@@ -66,6 +66,7 @@ import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.NavigationLauncher
 import org.librepaw.app.ui.common.PetAvatar
 import org.librepaw.app.ui.common.PetStatusPresentation
+import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,7 +173,8 @@ private fun PetDetailContent(
 ) {
   val context = LocalContext.current
   Column(
-    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+    modifier =
+      Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = BottomBarClearance),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     Box {

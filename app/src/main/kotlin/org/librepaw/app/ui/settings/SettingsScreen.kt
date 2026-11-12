@@ -33,6 +33,7 @@ import org.librepaw.app.BuildConfig
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.settings.AppearanceMode
 import org.librepaw.app.data.settings.AppearancePreferences
+import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +59,9 @@ fun SettingsScreen(
     },
   ) { innerPadding ->
     Column(
-      modifier = Modifier.padding(innerPadding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+      modifier =
+        Modifier.padding(innerPadding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
+          .padding(bottom = BottomBarClearance),
     ) {
       SectionHeader("Account")
       InfoCard {

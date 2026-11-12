@@ -41,6 +41,7 @@ import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
+import org.librepaw.app.ui.home.BottomBarClearance
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -169,7 +170,7 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
     )
 
     Surface(
-      modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+      modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = BottomBarClearance),
       shape = MaterialTheme.shapes.large,
       color = MaterialTheme.colorScheme.surface,
       shadowElevation = 8.dp,

@@ -38,6 +38,7 @@ import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.PetAvatar
 import org.librepaw.app.ui.common.PetStatusPresentation
+import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,7 +147,7 @@ private fun PetGrid(pets: List<Pet>, petRepository: PetRepository, onPetClick: (
   LazyVerticalGrid(
     columns = GridCells.Adaptive(minSize = 100.dp),
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(20.dp),
+    contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 20.dp + BottomBarClearance),
     verticalArrangement = Arrangement.spacedBy(20.dp),
     horizontalArrangement = Arrangement.spacedBy(20.dp),
   ) {

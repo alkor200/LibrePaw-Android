@@ -23,6 +23,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
+ * How much bottom clearance a screen's own scrollable content needs to reserve so its last item
+ * can still scroll fully clear of the floating bar: since [org.librepaw.app.MainNavigation] now
+ * overlays the bar on top of full-size content rather than reserving space for it in a Scaffold,
+ * each screen needs to add this itself (its own Scaffold's innerPadding knows nothing about a bar
+ * living one level up). Matches the bar's own vertical padding (12dp) + content padding (10dp) +
+ * icon/label height (roughly 42dp) + a little breathing room.
+ */
+val BottomBarClearance = 96.dp
+
+/**
  * A floating, pill-shaped tab bar, always visible across every logged-in screen (not just
  * [HomeScreen] itself, see [org.librepaw.app.MainNavigation]) so switching tabs never loses its
  * place the way a plain full-width [androidx.compose.material3.NavigationBar] would while buried

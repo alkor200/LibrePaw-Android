@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,7 @@ import java.util.Date
 import java.util.Locale
 import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +114,7 @@ fun ExcursionsScreen(
               )
             }
           } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = BottomBarClearance)) {
               items(state.excursions, key = { it.id }) { excursion ->
                 ExcursionRow(excursion = excursion, homeNamesById = state.homeNamesById, onClick = { onExcursionClick(excursion) })
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

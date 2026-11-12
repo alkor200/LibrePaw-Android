@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.HomeGeofence
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +75,9 @@ fun HomesScreen(
     },
     floatingActionButton = {
       if (canManageHomes) {
-        FloatingActionButton(onClick = onAddHome) { Icon(Icons.Filled.Add, contentDescription = "Add Home") }
+        FloatingActionButton(onClick = onAddHome, modifier = Modifier.padding(bottom = BottomBarClearance)) {
+          Icon(Icons.Filled.Add, contentDescription = "Add Home")
+        }
       }
     },
   ) { innerPadding ->
@@ -141,7 +145,7 @@ private fun HomesList(
 
   Column(modifier = Modifier.fillMaxSize()) {
     VisibilityNotice(permissions)
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = BottomBarClearance)) {
       items(homes, key = { it.id }) { home ->
         HomeRow(home = home, canManage = canManageHomes, onClick = { onEditHome(home) }, onDelete = { onDeleteHome(home.id) })
       }
