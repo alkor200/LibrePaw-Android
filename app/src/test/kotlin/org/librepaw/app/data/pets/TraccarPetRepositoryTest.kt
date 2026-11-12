@@ -107,6 +107,69 @@ class TraccarPetRepositoryTest {
     assertEquals(1, TraccarPetRepository.firstHomecomingPause(trail, listOf(home))?.homeId)
   }
 
+  @Test
+  fun firstHomecomingPause_requireStaysHomeAfterward_rejectsEarlyFalsePositive() {
+    // The pet is still chatting by the front door (within radius+slack) when the tracker goes
+    // quiet for 6 minutes (a brief signal dead spot), long enough to pass the plain quiet-gap
+    // check — but she then clearly goes on a real walk far from home. Without
+    // requireStaysHomeAfterward this would wrongly look like an early homecoming.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 50.0)
+    val trail =
+      listOf(
+        position(0.0001, 0.0001, "2024-01-01T10:00:00.000+00:00"), // near home
+        // 6-minute gap, would pass the plain quiet-gap check
+        position(0.01, 0.01, "2024-01-01T10:06:00.000+00:00"), // clearly far away: a real walk
+      )
+
+    assertNull(TraccarPetRepository.firstHomecomingPause(trail, listOf(home), requireStaysHomeAfterward = true))
+  }
+
+  @Test
+  fun firstHomecomingPause_requireStaysHomeAfterward_acceptsGenuineHomecoming() {
+    // Same shape, but every later position also stays near home: a genuine return (tracker just
+    // never fired a formal enter event), not a brief gap mid-walk.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 50.0)
+    val trail =
+      listOf(
+        position(0.0001, 0.0001, "2024-01-01T10:00:00.000+00:00"),
+        position(0.0001, 0.0001, "2024-01-01T10:06:00.000+00:00"),
+      )
+
+    assertEquals(1, TraccarPetRepository.firstHomecomingPause(trail, listOf(home), requireStaysHomeAfterward = true)?.homeId)
+  }
+
+  @Test
+  fun firstHomecomingPause_requireStaysHomeAfterward_stillAcceptsWhenTrailSimplyEnds() {
+    // The original tracker-fell-asleep scenario: nothing at all follows the near-home pause. An
+    // empty remainder passes trivially, same as the plain check.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 50.0)
+    val trail =
+      listOf(
+        position(0.0, 1.0, "2024-01-01T10:00:00.000+00:00"),
+        position(0.0001, 0.0001, "2024-01-01T10:06:00.000+00:00"),
+      )
+
+    assertEquals(1, TraccarPetRepository.firstHomecomingPause(trail, listOf(home), requireStaysHomeAfterward = true)?.homeId)
+  }
+
+  @Test
+  fun firstHomecomingPause_stillOpenExcursionWithLateRealArrival_isNotClosedEarly() {
+    // End-to-end against makeExcursion's own call pattern: simulates checking the app moments
+    // after leaving, before any real enter event exists, confirming the still-open excursion
+    // is not prematurely (and permanently) closed by a brief dead spot right after the exit.
+    val home = HomeGeofence(id = 1, name = "Home", center = Coordinate(0.0, 0.0), radiusMeters = 50.0)
+    val trail =
+      listOf(
+        position(0.0001, 0.0001, "2024-01-01T10:00:30.000+00:00"), // near home, chatting by the door
+        // 6-minute dead spot
+        position(0.002, 0.002, "2024-01-01T10:10:00.000+00:00"), // now clearly walking, far away
+      )
+
+    // fetchedEndTime == null: no real enter event yet, exactly makeExcursion's still-ongoing case.
+    val homecoming = TraccarPetRepository.firstHomecomingPause(trail, listOf(home), requireStaysHomeAfterward = true)
+    assertNull(homecoming)
+  }
+
   // MARK: - shouldPreferHomecoming
 
   @Test

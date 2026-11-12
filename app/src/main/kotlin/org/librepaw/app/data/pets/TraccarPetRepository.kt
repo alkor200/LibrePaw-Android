@@ -189,7 +189,14 @@ class TraccarPetRepository(
     var endHomeId = enter?.geofenceId
     var trail = fullTrail
 
-    val homecoming = firstHomecomingPause(fullTrail, homes)
+    // Only required while the excursion is still open (no real enter event exists yet): the whole
+    // fetched trail necessarily belongs to this one still-ongoing excursion (Traccar hasn't closed
+    // it), so checking that the pet stays near home for the rest of what's known so far safely tells
+    // a real early return apart from a brief mid-walk signal gap, without any risk of a later,
+    // separately-reopened excursion's data bleeding in (see the already-closed branch below). Once a
+    // real enter event exists, the original, simpler check applies: that case is already bounded by
+    // two real Traccar events, confirmed live against a real tracker's multi-hour buffering delay.
+    val homecoming = firstHomecomingPause(fullTrail, homes, requireStaysHomeAfterward = fetchedEndTime == null)
     if (homecoming != null && shouldPreferHomecoming(homecoming, fetchedEndTime)) {
       endTime = homecoming.fixTime
       endHomeId = homecoming.homeId
@@ -284,23 +291,37 @@ class TraccarPetRepository(
      * followed by a long enough quiet gap, treating that as the excursion's true end even without a
      * real `geofenceEnter` event (a tracker's own firmware sleep mode can trigger a few meters short
      * of the boundary).
+     *
+     * [requireStaysHomeAfterward], set only for a still-open excursion (see [makeExcursion]), rejects
+     * a candidate if the trail resumes with the pet clearly elsewhere: a quiet gap right after leaving
+     * (e.g. a brief signal dead spot while still chatting by the front door) can otherwise look
+     * identical to a real, early return, closing out what's actually about to become a much longer
+     * walk — and since Traccar hasn't closed this excursion yet, the real enter event that eventually
+     * arrives would have no exit left to pair with (the cached, too-early closure already consumed
+     * it), silently losing the whole walk rather than just mis-timing it.
      */
     fun firstHomecomingPause(
       trail: List<TraccarPosition>,
       homes: List<HomeGeofence>,
       proximitySlackMeters: Double = HOME_PROXIMITY_SLACK_METERS,
       minimumQuietGapMillis: Long = QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS,
+      requireStaysHomeAfterward: Boolean = false,
     ): Homecoming? {
       val sorted = trail.sortedBy { TraccarDates.parse(it.fixTime) ?: 0L }
+      fun isNearAnyHome(position: TraccarPosition): Boolean {
+        val coordinate = Coordinate(position.latitude, position.longitude)
+        return homes.any { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters }
+      }
       for (index in sorted.indices) {
         val position = sorted[index]
         val coordinate = Coordinate(position.latitude, position.longitude)
         val nearestHome =
           homes.firstOrNull { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters } ?: continue
         val positionTime = TraccarDates.parse(position.fixTime) ?: 0L
-        val nextTime = sorted.getOrNull(index + 1)?.let { TraccarDates.parse(it.fixTime) }
+        val remainder = sorted.subList(index + 1, sorted.size)
+        val nextTime = remainder.firstOrNull()?.let { TraccarDates.parse(it.fixTime) }
         val gap = if (nextTime != null) nextTime - positionTime else Long.MAX_VALUE
-        if (gap >= minimumQuietGapMillis) {
+        if (gap >= minimumQuietGapMillis && (!requireStaysHomeAfterward || remainder.all(::isNearAnyHome))) {
           return Homecoming(positionTime, nearestHome.id)
         }
       }
