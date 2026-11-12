@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Refresh
@@ -53,12 +54,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.common.NavigationLauncher
 import org.librepaw.app.ui.common.PetAvatar
 import org.librepaw.app.ui.common.PetStatusPresentation
 
@@ -73,6 +76,7 @@ fun PetDetailScreen(
   onExcursionsClick: (Pet) -> Unit,
   onTrailClick: (Pet) -> Unit,
   onSharePetClick: (Pet) -> Unit,
+  onViewOnMapClick: (Pet) -> Unit,
   modifier: Modifier = Modifier,
   /** Bumped by the caller after a successful edit, so a fresh [PetDetailViewModel] re-fetches instead of reusing stale cached state. */
   dataVersion: Int = 0,
@@ -141,6 +145,7 @@ fun PetDetailScreen(
             onExcursionsClick = onExcursionsClick,
             onTrailClick = onTrailClick,
             onSharePetClick = onSharePetClick,
+            onViewOnMapClick = onViewOnMapClick,
           )
       }
     }
@@ -158,7 +163,9 @@ private fun PetDetailContent(
   onExcursionsClick: (Pet) -> Unit,
   onTrailClick: (Pet) -> Unit,
   onSharePetClick: (Pet) -> Unit,
+  onViewOnMapClick: (Pet) -> Unit,
 ) {
+  val context = LocalContext.current
   Column(
     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -194,71 +201,30 @@ private fun PetDetailContent(
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
-    // Trail and Excursions are both built from Traccar's reports endpoint, hidden when the
-    // account has reports disabled rather than leading somewhere that would just error.
-    if (permissions?.canViewExcursions == true) {
-      Surface(
-        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-      ) {
-        Row(
-          modifier = Modifier.fillMaxWidth().clickable { onTrailClick(pet) }.padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(Icons.Filled.Route, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-          Text("Trail", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
-          Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-      }
-
-      Surface(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-      ) {
-        Row(
-          modifier = Modifier.fillMaxWidth().clickable { onExcursionsClick(pet) }.padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(Icons.Filled.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-          Text("Excursions", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
-          Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-      }
-    }
-
-    Surface(
-      modifier = Modifier.fillMaxWidth().padding(top = if (permissions?.canViewExcursions == true) 12.dp else 24.dp),
-      shape = MaterialTheme.shapes.medium,
-      color = MaterialTheme.colorScheme.surfaceVariant,
+    Column(
+      modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth().clickable { onHomesClick(pet) }.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Icon(Icons.Filled.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Text("${pet.name}'s Homes", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+      // Same order as iOS's own actionsCard: Navigate/View on Map need a known position; Trail
+      // and Excursions are both built from Traccar's reports endpoint, hidden when the account
+      // has reports disabled; Sharing stays admin-only, granting another Traccar account access
+      // to a device requires an administrator server-side.
+      val position = pet.lastPosition
+      if (position != null) {
+        ActionRow(
+          icon = Icons.Filled.Navigation,
+          label = "Navigate to ${pet.name}",
+          onClick = { NavigationLauncher.navigateTo(context, position.latitude, position.longitude, pet.name) },
+        )
+        ActionRow(icon = Icons.Filled.Map, label = "View on Map", onClick = { onViewOnMapClick(pet) })
       }
-    }
-
-    // Sharing stays admin-only: granting another Traccar account access to a device requires an
-    // administrator server-side, so the entry point is hidden rather than leading somewhere useless.
-    if (permissions?.isAdministrator == true) {
-      Surface(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-      ) {
-        Row(
-          modifier = Modifier.fillMaxWidth().clickable { onSharePetClick(pet) }.padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-          Text("Share ${pet.name}", modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
-          Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+      if (permissions?.canViewExcursions == true) {
+        ActionRow(icon = Icons.Filled.Route, label = "Trail", onClick = { onTrailClick(pet) })
+        ActionRow(icon = Icons.Filled.Pets, label = "Excursions", onClick = { onExcursionsClick(pet) })
+      }
+      ActionRow(icon = Icons.Filled.Home, label = "${pet.name}'s Homes", onClick = { onHomesClick(pet) })
+      if (permissions?.isAdministrator == true) {
+        ActionRow(icon = Icons.Filled.PersonAdd, label = "Share ${pet.name}", onClick = { onSharePetClick(pet) })
       }
     }
 
@@ -292,6 +258,24 @@ private fun PetDetailContent(
         Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(locationText(pet), modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
       }
+    }
+  }
+}
+
+@Composable
+private fun ActionRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+  Surface(
+    modifier = Modifier.fillMaxWidth(),
+    shape = MaterialTheme.shapes.medium,
+    color = MaterialTheme.colorScheme.surfaceVariant,
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+      Text(label, modifier = Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+      Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }
 }

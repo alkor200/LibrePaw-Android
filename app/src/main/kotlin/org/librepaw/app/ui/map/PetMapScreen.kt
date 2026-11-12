@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,12 +29,14 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
+import org.librepaw.app.ui.common.NavigationLauncher
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -57,6 +60,11 @@ fun PetMapScreen(
   modifier: Modifier = Modifier,
   /** Bumped by the caller after a successful edit, so a fresh [PetMapViewModel] re-fetches instead of reusing stale cached state. */
   dataVersion: Int = 0,
+  /** Set by Pet Detail's "View on Map", so this screen centers on that one pet once (matching
+   * iOS's AppTabNavigation.mapFocusPet); [onFocusConsumed] clears it the same way iOS's own
+   * `.onChange` handler does once it's finished animating the camera there. */
+  focusPetId: Int? = null,
+  onFocusConsumed: () -> Unit = {},
   viewModel: PetMapViewModel = viewModel(key = "pet-map-$dataVersion") { PetMapViewModel(petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +77,8 @@ fun PetMapScreen(
       styleUrl = styleUrl,
       pets = pets,
       onPetClick = onPetClick,
+      focusPetId = focusPetId,
+      onFocusConsumed = onFocusConsumed,
       modifier = Modifier.fillMaxSize(),
     )
 
@@ -127,13 +137,17 @@ private fun PetMarkersMap(
   styleUrl: String,
   pets: List<Pet>,
   onPetClick: (Pet) -> Unit,
+  focusPetId: Int?,
+  onFocusConsumed: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
   val latestPets by rememberUpdatedState(pets)
   val latestOnPetClick by rememberUpdatedState(onPetClick)
+  val latestOnFocusConsumed by rememberUpdatedState(onFocusConsumed)
   val fallbackColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
   val pawColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+  val context = LocalContext.current
 
   LaunchedEffect(map) {
     val currentMap = map ?: return@LaunchedEffect
@@ -144,6 +158,25 @@ private fun PetMarkersMap(
       val pet = latestPets.firstOrNull { it.id == petId }
       if (pet != null) {
         latestOnPetClick(pet)
+        true
+      } else {
+        false
+      }
+    }
+    // Matches iOS's PetMapView: long-pressing the map (not necessarily right on a marker, since
+    // MapLibre's long-press API only gives a coordinate, no feature hit-testing) starts
+    // navigation to whichever pet is nearest the press, within 50m.
+    currentMap.addOnMapLongClickListener { latLng ->
+      val pressed = Coordinate(latLng.latitude, latLng.longitude)
+      val nearestPet =
+        latestPets
+          .mapNotNull { pet -> pet.lastPosition?.let { position -> pet to pressed.distanceMeters(Coordinate(position.latitude, position.longitude)) } }
+          .filter { (_, distance) -> distance <= 50.0 }
+          .minByOrNull { (_, distance) -> distance }
+          ?.first
+      if (nearestPet != null) {
+        val position = nearestPet.lastPosition!!
+        NavigationLauncher.navigateTo(context, position.latitude, position.longitude, nearestPet.name)
         true
       } else {
         false
@@ -176,8 +209,32 @@ private fun PetMarkersMap(
           .withProperties(PropertyFactory.iconImage(Expression.get("icon")), PropertyFactory.iconAllowOverlap(true))
       )
 
-      fitCamera(currentMap, pets)
+      // `setStyle` resets the camera to the style's own default view as it loads, which would
+      // otherwise undo a pending "View on Map" focus: this effect's photo fetch makes it slower
+      // than the dedicated focus effect below, so its setStyle call lands after that effect's
+      // animateCamera and would silently snap back to a fit-all (or default) view a moment later.
+      // Deciding the camera here, after the style has actually finished loading, is the only spot
+      // guaranteed to run after that reset, so it must handle the focused case itself rather than
+      // deferring to the other effect.
+      val focusPosition = focusPetId?.let { id -> pets.firstOrNull { it.id == id }?.lastPosition }
+      if (focusPosition != null) {
+        currentMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(focusPosition.latitude, focusPosition.longitude), 16.0))
+        latestOnFocusConsumed()
+      } else {
+        fitCamera(currentMap, pets)
+      }
     }
+  }
+
+  // Handles "View on Map" tapped again while this screen's composition (and its already-loaded
+  // style) is still alive, e.g. reached from a pet marker on this same map: no new setStyle call
+  // happens in that case, so there's no reset to race against here.
+  LaunchedEffect(map, focusPetId, pets) {
+    val currentMap = map ?: return@LaunchedEffect
+    val petId = focusPetId ?: return@LaunchedEffect
+    val position = pets.firstOrNull { it.id == petId }?.lastPosition ?: return@LaunchedEffect
+    currentMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(position.latitude, position.longitude), 16.0))
+    latestOnFocusConsumed()
   }
 
   MapLibreHost(modifier = modifier, onMapReady = { map = it })
