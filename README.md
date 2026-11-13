@@ -61,6 +61,30 @@ android run app --device=emulator-5554
 android screen capture -o screenshot.png
 ```
 
+## Releasing
+
+Release builds are minified with R8. They're signed only when a keystore is configured outside
+this repository, e.g. in `~/.gradle/gradle.properties` (never commit a keystore or its passwords):
+
+```properties
+librepaw.release.storeFile=/path/to/librepaw-release.jks
+librepaw.release.storePassword=…
+librepaw.release.keyAlias=…
+librepaw.release.keyPassword=…
+```
+
+Without it, release builds come out unsigned.
+
+- **Google Play:** `./gradlew bundleRelease` builds an App Bundle
+  (`app/build/outputs/bundle/release/app-release.aab`); Play splits it per device itself.
+- **Direct downloads** (e.g. GitHub releases): `./gradlew assembleRelease` builds one APK per CPU
+  architecture plus a universal one in `app/build/outputs/apk/release/`. Most phones want
+  `arm64-v8a` (~15 MB, against ~50 MB for the universal APK, which carries MapLibre's native
+  libraries for every architecture).
+
+Build the two in separate Gradle invocations: AGP refuses per-architecture APKs and a bundle in the
+same one.
+
 ## License
 
 LibrePaw is available under the [GNU General Public License v3.0](LICENSE), the same as the iOS app: you're free to use, modify, and distribute it, including forks, but any distributed derivative work must stay open source under the same license.

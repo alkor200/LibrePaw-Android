@@ -15,11 +15,46 @@ android {
     versionName = "1.0"
   }
 
+  // Signed only when a keystore is configured outside the repository, e.g. in
+  // ~/.gradle/gradle.properties (see README, "Releasing"). Without one, release builds stay
+  // unsigned, exactly as before; nothing secret ever goes into this repository.
+  val releaseKeystore = providers.gradleProperty("librepaw.release.storeFile").orNull
+  if (releaseKeystore != null) {
+    signingConfigs {
+      create("release") {
+        storeFile = file(releaseKeystore)
+        storePassword = providers.gradleProperty("librepaw.release.storePassword").get()
+        keyAlias = providers.gradleProperty("librepaw.release.keyAlias").get()
+        keyPassword = providers.gradleProperty("librepaw.release.keyPassword").get()
+      }
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
+    }
+  }
+
+  // One APK per CPU architecture (plus a universal one) for direct downloads, instead of a single
+  // 52 MB APK half of which is MapLibre's native libraries for the other architectures, x86 and
+  // x86_64 alone being ~26 MB that only emulators use. Only for release APK builds: the Play Store
+  // gets an App Bundle (bundleRelease), which it splits per device itself, and debug builds stay a
+  // single APK for the emulator.
+  splits {
+    abi {
+      // Never together with a bundle in the same Gradle invocation, AGP refuses that
+      // (https://issuetracker.google.com/402800800).
+      val tasks = gradle.startParameter.taskNames
+      isEnable =
+        tasks.any { it.contains("assemble", ignoreCase = true) && it.contains("Release", ignoreCase = true) } &&
+          tasks.none { it.contains("bundle", ignoreCase = true) }
+      reset()
+      include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+      isUniversalApk = true
     }
   }
   compileOptions {
