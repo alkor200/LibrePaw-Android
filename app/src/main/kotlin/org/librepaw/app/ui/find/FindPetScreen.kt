@@ -8,7 +8,7 @@ import android.provider.Settings
 import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -150,7 +150,10 @@ private fun CompassContent(pet: Pet, userCoordinate: Coordinate, headingDegrees:
   val bearing = userCoordinate.initialBearingDegrees(petCoordinate)
   val heading = if (isHeadingAvailable) (headingDegrees ?: bearing) else 0.0
   val rotation = ((bearing - heading) % 360 + 360) % 360
-  val animatedRotation by animateFloatAsState(targetValue = rotation.toFloat(), label = "compassRotation")
+  // Animated the short way round: a plain animateFloatAsState on the normalized [0, 360) angle spun
+  // the arrow almost a full turn backwards whenever it crossed north (359 -> 1 degrees).
+  val animatedRotation = remember { Animatable(rotation.toFloat()) }
+  LaunchedEffect(rotation) { animatedRotation.animateTo(shortestRotationTarget(animatedRotation.value, rotation.toFloat())) }
   val distanceMeters = userCoordinate.distanceMeters(petCoordinate)
 
   Column(
@@ -169,7 +172,7 @@ private fun CompassContent(pet: Pet, userCoordinate: Coordinate, headingDegrees:
         Icons.Filled.Navigation,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(72.dp).rotate(animatedRotation),
+        modifier = Modifier.size(72.dp).rotate(animatedRotation.value),
       )
     }
 
@@ -276,4 +279,13 @@ private fun openAppSettings(context: Context) {
   val intent =
     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
   context.startActivity(intent)
+}
+
+/**
+ * The rotation to animate to from [current] (unbounded, it accumulates across turns) so the arrow
+ * ends up at [target] degrees by the shortest way round, never more than half a turn.
+ */
+internal fun shortestRotationTarget(current: Float, target: Float): Float {
+  val delta = ((target - current) % 360f + 540f) % 360f - 180f
+  return current + delta
 }
