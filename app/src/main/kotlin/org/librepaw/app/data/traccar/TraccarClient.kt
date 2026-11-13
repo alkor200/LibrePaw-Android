@@ -314,8 +314,10 @@ class TraccarClient(private val credentials: TraccarCredentials) {
 
   private fun statusError(code: Int): TraccarError =
     when (code) {
-      401,
-      403, -> TraccarError.InvalidCredentials()
+      401 -> TraccarError.InvalidCredentials()
+      // Not InvalidCredentials: telling someone whose password is fine that it's wrong sends them
+      // off retyping it, or worse, resetting it.
+      403 -> TraccarError.Forbidden()
       else -> TraccarError.Server(code)
     }
 }

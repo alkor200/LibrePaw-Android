@@ -2,8 +2,14 @@ package org.librepaw.app.data.traccar
 
 /** Errors surfaced by [TraccarClient]. */
 sealed class TraccarError(message: String) : Exception(message) {
-  /** The server rejected the supplied credentials (HTTP 401/403). */
+  /** The server rejected the supplied credentials (HTTP 401). */
   class InvalidCredentials : TraccarError("The email or password is incorrect.")
+
+  /**
+   * The credentials are fine, but this account may not do that (HTTP 403), or something in front
+   * of the server (a reverse proxy, a firewall) refused the request.
+   */
+  class Forbidden : TraccarError("This account isn't allowed to do that on this server.")
 
   /** The server returned a non-success status code other than 401/403. */
   data class Server(val statusCode: Int) :
