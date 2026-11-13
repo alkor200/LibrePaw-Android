@@ -1,12 +1,14 @@
 package org.librepaw.app.data.pets
 
 import android.content.Context
+import android.content.SharedPreferences
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 /** Persists closed excursions per pet+server, so they never need recomputing (see ADR-0026 on iOS). */
-class ExcursionCacheStore(context: Context) {
-  private val prefs = context.applicationContext.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE)
+class ExcursionCacheStore(private val prefs: SharedPreferences) {
+  constructor(context: Context) : this(context.applicationContext.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE))
+
   private val json = Json { ignoreUnknownKeys = true }
 
   fun load(petId: Int, serverHost: String): CachedExcursions? {
@@ -26,11 +28,28 @@ class ExcursionCacheStore(context: Context) {
     prefs.edit().remove(key(petId, serverHost)).apply()
   }
 
+  /**
+   * Loads, transforms and saves in one step that no other [update] for any pet can interleave
+   * with, unlike a separate [load] then [save]. fetchExcursions runs concurrently for the same pet
+   * (e.g. Pet Detail loads lifetime stats and today's excursions side by side), and a plain
+   * load/save pair let whichever finished last silently overwrite the other's freshly fetched
+   * excursions.
+   */
+  fun <R> update(petId: Int, serverHost: String, transform: (CachedExcursions?) -> Pair<CachedExcursions, R>): R =
+    synchronized(UPDATE_LOCK) {
+      val (updated, result) = transform(load(petId, serverHost))
+      save(updated, petId, serverHost)
+      result
+    }
+
   // v2: caches written before the coverage-gap fix in TraccarPetRepository.mergeExcursions may
   // already be missing excursions for good, a new key rebuilds every one of them once.
   private fun key(petId: Int, serverHost: String) = "v2:$serverHost:$petId"
 
   companion object {
     private const val PREFS_FILE_NAME = "librepaw_excursion_cache"
+
+    /** Shared by every instance, they all read and write the same preferences file. */
+    private val UPDATE_LOCK = Any()
   }
 }

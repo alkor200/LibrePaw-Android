@@ -147,8 +147,13 @@ class TraccarPetRepository(
           .filter { !isDegenerate(it) }
     }
 
-    val (all, newCache) = mergeExcursions(cached, freshExcursions, liveFrom)
-    excursionCacheStore.save(newCache, petId, serverHost)
+    // Merged against whatever is stored *now*, not `cached` from before the fetch: another
+    // concurrent call for the same pet may have saved in the meantime (see ExcursionCacheStore.update).
+    val all =
+      excursionCacheStore.update(petId, serverHost) { latest ->
+        val (all, newCache) = mergeExcursions(latest, freshExcursions, liveFrom)
+        newCache to all
+      }
 
     return all
       .filter { it.startTime in fromEpochMillis..toEpochMillis }
