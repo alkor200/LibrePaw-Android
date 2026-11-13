@@ -123,6 +123,9 @@ dependencies {
   // Secure credential storage
   implementation(libs.androidx.security.crypto)
 
-  // Map (OpenFreeMap tiles, see ADR-0028 on the iOS side)
+  // Map (OpenFreeMap tiles, see ADR-0028 on the iOS side). The OpenGL ES build, not MapLibre's
+  // default android-sdk artifact: that one renders with Vulkan only, no fallback, and crashes
+  // with "No Vulkan compatible GPU found" on any device without usable Vulkan (common below
+  // Android 10 and on budget hardware), on the map, the very first screen.
   implementation(libs.maplibre.android.sdk)
 }
