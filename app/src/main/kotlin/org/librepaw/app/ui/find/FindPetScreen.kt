@@ -45,6 +45,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,6 +83,12 @@ fun FindPetScreen(
 
   LaunchedEffect(Unit) {
     if (!hasPermission) permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+  }
+
+  // Only while the screen is actually visible, not while the app sits in the background.
+  val lifecycleOwner = LocalLifecycleOwner.current
+  LaunchedEffect(lifecycleOwner, viewModel) {
+    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.pollPositions() }
   }
 
   DisposableEffect(hasPermission) {

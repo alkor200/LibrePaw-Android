@@ -11,9 +11,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
@@ -52,12 +54,13 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
   }
 
   /**
-   * Every screen's `viewModel(key = ...)` is keyed by petId/dataVersion, never by session
-   * identity, so switching accounts within the same process (log out, then log back in as a
-   * different user) would otherwise leave a screen like PetDetail showing a ViewModel instance
-   * still holding the previous session's permissions (e.g. an admin-only action staying visible
-   * for a non-admin account that happens to view the same pet). Clearing the whole store on every
-   * session transition guarantees every screen rebuilds fresh against the new session.
+   * Every screen's `viewModel(key = ...)` lives in its back stack entry's own store (see
+   * rememberViewModelStoreNavEntryDecorator below), keyed by petId/dataVersion, never by session
+   * identity. An entry that survives a session switch (Main, which Login replaces and then
+   * re-adds under the same key) would otherwise keep a ViewModel still holding the previous
+   * session's data and permissions. Clearing the activity's store, which holds every entry's
+   * store, on every session transition guarantees every screen rebuilds fresh against the new
+   * session.
    */
   fun switchSession(newSession: StoredSession?) {
     viewModelStoreOwner?.viewModelStore?.clear()
@@ -73,6 +76,12 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
       modifier = Modifier.fillMaxSize(),
       backStack = backStack,
       onBack = { backStack.removeLastOrNull() },
+      // Scopes each screen's ViewModels to its own back stack entry, cleared once it's popped.
+      // Without this they all lived in the activity's store until logout: Find Pet's position
+      // polling kept running after leaving the screen, and reopening Edit Pet, Set Home or Share
+      // Pet showed whatever was abandoned there last time.
+      entryDecorators =
+        listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
       entryProvider =
         entryProvider {
           entry<Login> {
