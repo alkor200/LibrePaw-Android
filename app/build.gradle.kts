@@ -9,7 +9,10 @@ android {
   compileSdk = 36
   defaultConfig {
     applicationId = "org.librepaw.app"
-    minSdk = 24
+    // Android 7.1.1. Not 7.0: it trusts neither of Let's Encrypt's ISRG roots and, since Let's
+    // Encrypt dropped the old DST cross-sign in 2024, can't validate any Let's Encrypt certificate,
+    // so it can't connect to almost any self-hosted Traccar server (confirmed on an emulator).
+    minSdk = 25
     targetSdk = 36
     versionCode = 1
     versionName = "1.0"

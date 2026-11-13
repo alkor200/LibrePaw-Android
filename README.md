@@ -19,6 +19,11 @@ as a 1:1 mirror, the two are expected to drift apart over time.
 
 ## Requirements
 
+The app runs on Android 7.1.1 (API 25) and newer. Android 7.0 isn't supported: it can't validate
+Let's Encrypt certificates, which almost every self-hosted Traccar server uses.
+
+To build it:
+
 - **JDK 17, specifically** (not whatever is newest/default on the machine):
   confirmed live, building under JDK 27 (the Homebrew default `openjdk`
   formula pulled in as a `gradle` dependency) fails outright with
@@ -48,7 +53,6 @@ as a 1:1 mirror, the two are expected to drift apart over time.
 export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.21.0.3/libexec/openjdk.jdk/Contents/Home
 ./gradlew assembleDebug   # build the debug APK
 ./gradlew test            # unit tests
-./gradlew connectedAndroidTest  # instrumented tests, needs a device/emulator
 ```
 
 ## Running on an emulator

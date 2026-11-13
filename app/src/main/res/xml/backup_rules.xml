@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Used for Auto Backup on Android 6 to 11 (API 23 to 30). From Android 12 on,
+   Used for Auto Backup up to Android 11 (API 30). From Android 12 on,
    data_extraction_rules.xml applies instead, keep both in sync.
    See https://developer.android.com/about/versions/12/backup-restore
 -->

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
    Cleartext HTTP is already refused by default from Android 9 on (targetSdk 28+),
-   but minSdk is 24: on Android 7 and 8 it was still allowed, so anything that
+   but minSdk is 25: on Android 7.1 and 8 it was still allowed, so anything that
    ended up on http:// (a redirect, a URL typed before the login screen's own
    check) would send the session token, or the password while logging in, in
    the clear. Said explicitly here so every supported version behaves the same.
