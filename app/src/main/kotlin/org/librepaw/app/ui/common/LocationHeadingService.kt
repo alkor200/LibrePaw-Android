@@ -12,6 +12,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,7 +54,23 @@ class LocationHeadingService(private val context: Context, private val trackHead
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
       ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-  private val locationListener = LocationListener(::publish)
+  /**
+   * A full object, not a `LocationListener { }` lambda: up to Android 10 (API 29)
+   * onStatusChanged/onProviderEnabled/onProviderDisabled are abstract, their default bodies only
+   * arrived in Android 11, so the lambda compiled against a recent SDK crashed with
+   * AbstractMethodError the moment the system called one of them (confirmed on Android 7.1.1).
+   */
+  private val locationListener =
+    object : LocationListener {
+      override fun onLocationChanged(location: Location) = publish(location)
+
+      @Deprecated("Deprecated in Java")
+      override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+
+      override fun onProviderEnabled(provider: String) = Unit
+
+      override fun onProviderDisabled(provider: String) = Unit
+    }
 
   private fun publish(location: Location) {
     _location.value = location
