@@ -17,7 +17,8 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
@@ -46,7 +47,6 @@ kotlin {
 dependencies {
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
-  androidTestImplementation(composeBom)
 
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
@@ -65,20 +65,11 @@ dependencies {
   implementation(libs.androidx.compose.material.icons.extended)
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
-  // Instrumented tests
-  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-  debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-  // Local tests: jUnit, coroutines, Android runner
+  // Local tests: jUnit, coroutines, a local HTTP server
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.okhttp.mockwebserver)
-
-  // Instrumented tests: jUnit rules and runners
-  androidTestImplementation(libs.androidx.test.core)
-  androidTestImplementation(libs.androidx.test.ext.junit)
-  androidTestImplementation(libs.androidx.test.runner)
-  androidTestImplementation(libs.androidx.test.espresso.core)
 
   // Navigation
   implementation(libs.androidx.navigation3.ui)
