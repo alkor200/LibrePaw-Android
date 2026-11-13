@@ -1,6 +1,7 @@
 package org.librepaw.app.data.traccar
 
 import java.io.IOException
+import javax.net.ssl.SSLException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -353,9 +354,29 @@ class TraccarClient(private val credentials: TraccarCredentials) {
       try {
         httpClient.newCall(request).execute().use(block)
       } catch (e: IOException) {
+        val tlsFailure = tlsFailureIn(e)
+        if (tlsFailure != null) throw TraccarError.SecureConnection(tlsFailure.message ?: "unknown TLS error")
         throw TraccarError.Transport(e.message ?: "unknown transport error")
       }
     }
+
+  /**
+   * The TLS failure behind [e], if any: not necessarily [e] itself, OkHttp tries every address a
+   * host resolves to and throws the first route's failure, so a TLS failure on the IPv4 route can
+   * end up suppressed under an IPv6 route's plain connection failure.
+   */
+  private fun tlsFailureIn(e: Throwable): SSLException? {
+    val seen = mutableSetOf<Throwable>()
+    val pending = ArrayDeque(listOf(e))
+    while (pending.isNotEmpty()) {
+      val current = pending.removeFirst()
+      if (!seen.add(current)) continue
+      if (current is SSLException) return current
+      current.cause?.let(pending::addLast)
+      current.suppressed.forEach(pending::addLast)
+    }
+    return null
+  }
 
   private fun statusError(code: Int): TraccarError =
     when (code) {

@@ -32,6 +32,7 @@ fun Throwable.toUiText(): UiText =
     is TraccarError.Decoding -> UiText(R.string.error_unreadable_response)
     is TraccarError.NotFound -> UiText(R.string.error_user_not_found)
     is TraccarError.Transport -> UiText(R.string.error_transport, detail)
+    is TraccarError.SecureConnection -> UiText(R.string.error_secure_connection)
     is TraccarError.InvalidServerUrl -> UiText(R.string.error_invalid_server_url)
     is CredentialStorageException -> UiText(R.string.error_credential_storage)
     else -> UiText(R.string.error_generic)

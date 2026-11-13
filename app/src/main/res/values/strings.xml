@@ -27,6 +27,7 @@
     <string name="error_unreadable_response">The server response could not be understood.</string>
     <string name="error_user_not_found">No Traccar user with that email was found on this server.</string>
     <string name="error_transport">Could not reach the server: %1$s</string>
+    <string name="error_secure_connection">Couldn\'t establish a secure connection to the server. Its certificate or encryption settings aren\'t supported on this device.</string>
     <string name="error_invalid_server_url">The server address is not a valid URL.</string>
     <string name="error_credential_storage">The login couldn\'t be saved on this device.</string>
     <string name="error_generic">Something went wrong.</string>

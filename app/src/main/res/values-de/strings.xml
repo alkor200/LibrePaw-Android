@@ -23,6 +23,7 @@
     <string name="error_unreadable_response">Die Antwort des Servers konnte nicht verarbeitet werden.</string>
     <string name="error_user_not_found">Auf diesem Server gibt es keinen Traccar-Benutzer mit dieser E-Mail-Adresse.</string>
     <string name="error_transport">Der Server ist nicht erreichbar: %1$s</string>
+    <string name="error_secure_connection">Es konnte keine sichere Verbindung zum Server hergestellt werden. Sein Zertifikat oder seine Verschlüsselungseinstellungen werden auf diesem Gerät nicht unterstützt.</string>
     <string name="error_invalid_server_url">Die Serveradresse ist keine gültige URL.</string>
     <string name="error_credential_storage">Die Anmeldung konnte auf diesem Gerät nicht gespeichert werden.</string>
     <string name="error_generic">Etwas ist schiefgelaufen.</string>

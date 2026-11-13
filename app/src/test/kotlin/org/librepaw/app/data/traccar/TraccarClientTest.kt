@@ -111,6 +111,19 @@ class TraccarClientTest {
     assertTrue(failureOf { client.updateDeviceName(1, "Rex") } is TraccarError.Decoding)
   }
 
+  @Test
+  fun failedTlsHandshake_isSecureConnection_notTransport() = runTest {
+    // https:// against a server that only speaks plain HTTP: the TLS handshake can't succeed. Via
+    // "localhost", so the IPv6 route fails to connect first and the TLS failure on the IPv4 route
+    // only comes as a suppressed exception, see TraccarClient.tlsFailureIn.
+    val plainServerAsHttps = server.url("/").newBuilder().scheme("https").build()
+    val httpsClient = TraccarClient(TraccarCredentials(plainServerAsHttps, "user@example.org", Secret.Token("token-abc")))
+    server.enqueue(MockResponse(200, body = "[]"))
+
+    val failure = failureOf { httpsClient.fetchDevices() }
+    assertTrue("was $failure (${failure.cause})", failure is TraccarError.SecureConnection)
+  }
+
   private suspend fun failureOf(block: suspend () -> Unit): Throwable {
     try {
       block()
