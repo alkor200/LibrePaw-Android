@@ -16,7 +16,7 @@ class ExcursionCacheStoreTest {
       (1..50).map { id ->
         thread {
           start.await()
-          store.update(petId = 1, serverHost = "example.org") { latest ->
+          store.update(petId = 1, serverKey = "example.org") { latest ->
             val excursions = latest?.excursions.orEmpty() + excursion(id.toLong())
             CachedExcursions(excursions, coveredFrom = 0L, cachedThroughEndTime = null) to Unit
           }

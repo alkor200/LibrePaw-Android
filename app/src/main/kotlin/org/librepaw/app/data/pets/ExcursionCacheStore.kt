@@ -5,14 +5,14 @@ import android.content.SharedPreferences
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-/** Persists closed excursions per pet+server, so they never need recomputing (see ADR-0026 on iOS). */
+/** Persists closed excursions per pet+server (see TraccarPetRepository.serverKey), so they never need recomputing (see ADR-0026 on iOS). */
 class ExcursionCacheStore(private val prefs: SharedPreferences) {
   constructor(context: Context) : this(context.applicationContext.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE))
 
   private val json = Json { ignoreUnknownKeys = true }
 
-  fun load(petId: Int, serverHost: String): CachedExcursions? {
-    val raw = prefs.getString(key(petId, serverHost), null) ?: return null
+  fun load(petId: Int, serverKey: String): CachedExcursions? {
+    val raw = prefs.getString(key(petId, serverKey), null) ?: return null
     return try {
       json.decodeFromString<CachedExcursions>(raw)
     } catch (e: SerializationException) {
@@ -20,12 +20,12 @@ class ExcursionCacheStore(private val prefs: SharedPreferences) {
     }
   }
 
-  fun save(cache: CachedExcursions, petId: Int, serverHost: String) {
-    prefs.edit().putString(key(petId, serverHost), json.encodeToString(cache)).apply()
+  fun save(cache: CachedExcursions, petId: Int, serverKey: String) {
+    prefs.edit().putString(key(petId, serverKey), json.encodeToString(cache)).apply()
   }
 
-  fun clear(petId: Int, serverHost: String) {
-    prefs.edit().remove(key(petId, serverHost)).apply()
+  fun clear(petId: Int, serverKey: String) {
+    prefs.edit().remove(key(petId, serverKey)).apply()
   }
 
   /**
@@ -46,10 +46,10 @@ class ExcursionCacheStore(private val prefs: SharedPreferences) {
    * load/save pair let whichever finished last silently overwrite the other's freshly fetched
    * excursions.
    */
-  fun <R> update(petId: Int, serverHost: String, transform: (CachedExcursions?) -> Pair<CachedExcursions, R>): R =
+  fun <R> update(petId: Int, serverKey: String, transform: (CachedExcursions?) -> Pair<CachedExcursions, R>): R =
     synchronized(UPDATE_LOCK) {
-      val (updated, result) = transform(load(petId, serverHost))
-      save(updated, petId, serverHost)
+      val (updated, result) = transform(load(petId, serverKey))
+      save(updated, petId, serverKey)
       result
     }
 
@@ -57,7 +57,7 @@ class ExcursionCacheStore(private val prefs: SharedPreferences) {
   // homecoming pause as final while its exit/enter pair was still open, with the watermark past the
   // exit, so the next walk is missing for good. v2 was the same for the coverage-gap fix in
   // mergeExcursions. A new key rebuilds every one of them once.
-  private fun key(petId: Int, serverHost: String) = "v3:$serverHost:$petId"
+  private fun key(petId: Int, serverKey: String) = "v3:$serverKey:$petId"
 
   companion object {
     /** Must match the exclusion rules in `backup_rules.xml` / `data_extraction_rules.xml`. */

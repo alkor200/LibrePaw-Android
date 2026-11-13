@@ -115,14 +115,20 @@ class TraccarPetRepository(
 
   // MARK: - Excursions and lifetime stats (see ADR-0025/ADR-0026 on the iOS side)
 
+  /**
+   * Which server the local caches are for: host and port, since Traccar's own ids are only unique
+   * within one server, and two servers can share a host on different ports.
+   */
+  private val serverKey: String
+    get() = "${client.serverUrl.host}:${client.serverUrl.port}"
+
   override suspend fun fetchExcursions(petId: Int, fromEpochMillis: Long, toEpochMillis: Long): List<Excursion> {
     val homeTraccar = homeTraccarGeofences(petId)
     if (homeTraccar.isEmpty()) return emptyList()
     val homeIds = homeTraccar.map { it.id }.toSet()
     val homes = homeTraccar.mapNotNull(::toHomeGeofence)
 
-    val serverHost = client.serverUrl.host
-    val cached = excursionCacheStore.load(petId, serverHost)
+    val cached = excursionCacheStore.load(petId, serverKey)
     val liveFrom = liveFetchStart(cached, fromEpochMillis)
 
     var freshExcursions = emptyList<Excursion>()
@@ -158,7 +164,7 @@ class TraccarPetRepository(
     // Merged against whatever is stored *now*, not `cached` from before the fetch: another
     // concurrent call for the same pet may have saved in the meantime (see ExcursionCacheStore.update).
     val all =
-      excursionCacheStore.update(petId, serverHost) { latest ->
+      excursionCacheStore.update(petId, serverKey) { latest ->
         val (all, newCache) = mergeExcursions(latest, freshExcursions, liveFrom, provisionalIds)
         newCache to all
       }
@@ -170,12 +176,11 @@ class TraccarPetRepository(
   }
 
   override suspend fun resetExcursionsCache(petId: Int) {
-    excursionCacheStore.clear(petId, client.serverUrl.host)
+    excursionCacheStore.clear(petId, serverKey)
   }
 
   override suspend fun lifetimeExcursionStats(petId: Int): LifetimeStats {
-    val serverHost = client.serverUrl.host
-    val cached = lifetimeStatsStore.load(petId, serverHost)
+    val cached = lifetimeStatsStore.load(petId, serverKey)
 
     // The whole history, not just from this cache's own watermark: that can fall in the middle of a
     // still-open exit/enter pair (a walk closed by a homecoming pause, Traccar still waiting for an
@@ -185,12 +190,12 @@ class TraccarPetRepository(
     val recentExcursions = fetchExcursions(petId, 0L, System.currentTimeMillis())
 
     val (stats, newCache) = mergeLifetimeStats(cached, recentExcursions)
-    lifetimeStatsStore.save(newCache, petId, serverHost)
+    lifetimeStatsStore.save(newCache, petId, serverKey)
     return stats
   }
 
   override suspend fun resetLifetimeStats(petId: Int) {
-    lifetimeStatsStore.clear(petId, client.serverUrl.host)
+    lifetimeStatsStore.clear(petId, serverKey)
   }
 
   /** Every excursion one exit/enter pair stands for, see [splitIntoExcursions]. */
