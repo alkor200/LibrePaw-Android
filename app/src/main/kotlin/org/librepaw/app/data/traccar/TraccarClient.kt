@@ -78,6 +78,11 @@ class TraccarClient(private val credentials: TraccarCredentials) {
   private val httpClient =
     OkHttpClient.Builder()
       .cookieJar(cookieJar)
+      // OkHttp follows an https -> http redirect by default. It drops the Authorization header
+      // when the scheme changes, but a 307/308 re-sends the body as is, e.g. the email/password
+      // form of a password-based cookie-session login. The network security config refuses
+      // cleartext anyway, this keeps it from ever being attempted.
+      .followSslRedirects(false)
       .addInterceptor { chain ->
         val request =
           chain.request().newBuilder().header("Authorization", credentials.authorizationHeaderValue).build()
