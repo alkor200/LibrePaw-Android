@@ -1,14 +1,25 @@
 package org.librepaw.app.ui.map
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +36,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.gson.JsonObject
@@ -38,14 +51,19 @@ import org.librepaw.app.data.traccar.TraccarError
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.ImageDecoding
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
+import org.librepaw.app.ui.common.LocationHeadingService
 import org.librepaw.app.ui.common.MapLibreHost
-import org.librepaw.app.ui.home.BottomBarClearance
 import org.librepaw.app.ui.common.NavigationLauncher
+import org.librepaw.app.ui.home.BottomBarClearance
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.modes.CameraMode
+import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
@@ -146,13 +164,63 @@ private fun PetMarkersMap(
   modifier: Modifier = Modifier,
 ) {
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
+  // The style the latest setStyle call finished loading, for what needs one to attach to.
+  var loadedStyle by remember { mutableStateOf<Style?>(null) }
   val latestPets by rememberUpdatedState(pets)
   val latestOnPetClick by rememberUpdatedState(onPetClick)
   val latestOnFocusConsumed by rememberUpdatedState(onFocusConsumed)
   val fallbackColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
   val pawColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
   val context = LocalContext.current
+  val density = LocalDensity.current
   val cameraPadding = markerCameraPadding()
+
+  var hasLocationPermission by remember { mutableStateOf(hasLocationPermission(context)) }
+  val permissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+      hasLocationPermission = grants.values.any { it } || hasLocationPermission(context)
+    }
+  // Asked for once per launch when the map first shows, like iOS's PetMapView, not every time the
+  // Map tab is reopened after a refusal: from then on only the locate button asks again.
+  LaunchedEffect(Unit) {
+    if (!hasLocationPermission && !askedForLocationThisLaunch) {
+      askedForLocationThisLaunch = true
+      permissionLauncher.launch(LOCATION_PERMISSIONS)
+    }
+  }
+
+  // Only while the map is actually visible, not while the app sits in the background.
+  val locationService = remember { LocationHeadingService(context.applicationContext, trackHeading = false) }
+  LifecycleStartEffect(hasLocationPermission) {
+    if (hasLocationPermission) locationService.startUpdating()
+    onStopOrDispose { locationService.stopUpdating() }
+  }
+
+  LaunchedEffect(map, loadedStyle, hasLocationPermission) {
+    val currentMap = map ?: return@LaunchedEffect
+    val style = loadedStyle ?: return@LaunchedEffect
+    if (!hasLocationPermission) return@LaunchedEffect
+    showUserLocation(context, currentMap, style)
+    locationService.location.collect { location ->
+      if (location != null && currentMap.locationComponent.isLocationComponentActivated) {
+        currentMap.locationComponent.forceLocationUpdate(location)
+      }
+    }
+  }
+
+  // MapLibre's logo and attribution sit at the map's bottom edge, which the floating tab bar
+  // covers: moved up to just above it, the same as iOS's ornament row.
+  LaunchedEffect(map) {
+    val uiSettings = map?.uiSettings ?: return@LaunchedEffect
+    val bottom = with(density) { (BottomBarClearance + 8.dp).roundToPx() }
+    uiSettings.setLogoMargins(uiSettings.logoMarginLeft, uiSettings.logoMarginTop, uiSettings.logoMarginRight, bottom)
+    uiSettings.setAttributionMargins(
+      uiSettings.attributionMarginLeft,
+      uiSettings.attributionMarginTop,
+      uiSettings.attributionMarginRight,
+      bottom,
+    )
+  }
 
   LaunchedEffect(map) {
     val currentMap = map ?: return@LaunchedEffect
@@ -221,6 +289,8 @@ private fun PetMarkersMap(
       // Deciding the camera here, after the style has actually finished loading, is the only spot
       // guaranteed to run after that reset, so it must handle the focused case itself rather than
       // deferring to the other effect.
+      loadedStyle = style
+
       val focusPosition = focusPetId?.let { id -> pets.firstOrNull { it.id == id }?.lastPosition }
       if (focusPosition != null) {
         currentMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(focusPosition.latitude, focusPosition.longitude), 16.0))
@@ -242,7 +312,72 @@ private fun PetMarkersMap(
     latestOnFocusConsumed()
   }
 
-  MapLibreHost(modifier = modifier, onMapReady = { map = it })
+  Box(modifier = modifier) {
+    MapLibreHost(modifier = Modifier.fillMaxSize(), onMapReady = { map = it })
+    LocateButton(
+      onClick = {
+        if (!hasLocationPermission) {
+          permissionLauncher.launch(LOCATION_PERMISSIONS)
+        } else {
+          // Nothing yet without a first fix, same as iOS: the next tap after one arrives works.
+          val currentMap = map
+          val location = locationService.location.value
+          if (currentMap != null && location != null) {
+            currentMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location.latitude, location.longitude), 16.0))
+          }
+        }
+      },
+      // Above the logo/attribution row, which itself sits just above the tab bar (see above).
+      modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = BottomBarClearance + 48.dp),
+    )
+  }
+}
+
+@Composable
+private fun LocateButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+  Surface(
+    onClick = onClick,
+    modifier = modifier.size(48.dp),
+    shape = CircleShape,
+    color = MaterialTheme.colorScheme.surface,
+    contentColor = MaterialTheme.colorScheme.primary,
+    shadowElevation = 4.dp,
+  ) {
+    Box(contentAlignment = Alignment.Center) {
+      Icon(Icons.Filled.MyLocation, contentDescription = "Show My Location")
+    }
+  }
+}
+
+private val LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+/** See the map's own permission request: once per process, not once per Map tab visit. */
+private var askedForLocationThisLaunch = false
+
+private fun hasLocationPermission(context: Context): Boolean =
+  LOCATION_PERMISSIONS.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+
+/**
+ * The user's own position as MapLibre's standard location dot, fed from [LocationHeadingService]
+ * rather than MapLibre's own location engine (see the service's doc comment). Activated once per
+ * map (it then re-attaches itself to every style setStyle loads), only ever with a permission
+ * already granted.
+ */
+@SuppressLint("MissingPermission")
+private fun showUserLocation(context: Context, map: MapLibreMap, style: Style) {
+  val locationComponent = map.locationComponent
+  try {
+    if (!locationComponent.isLocationComponentActivated) {
+      locationComponent.activateLocationComponent(
+        LocationComponentActivationOptions.builder(context, style).useDefaultLocationEngine(false).build()
+      )
+    }
+    locationComponent.isLocationComponentEnabled = true
+    locationComponent.cameraMode = CameraMode.NONE
+    locationComponent.renderMode = RenderMode.NORMAL
+  } catch (e: SecurityException) {
+    // Permission revoked in the meantime: simply no location dot.
+  }
 }
 
 private fun markerImageId(pet: Pet) = "pet-${pet.id}"

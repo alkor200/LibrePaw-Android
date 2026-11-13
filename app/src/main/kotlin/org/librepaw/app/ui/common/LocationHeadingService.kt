@@ -24,11 +24,20 @@ import org.librepaw.app.data.pets.Coordinate
  * see ADR-0010). Android has no single true/magnetic heading API: the rotation-vector sensor's
  * azimuth is relative to magnetic north, so unlike iOS this never corrects to true north, a
  * simplification treated as acceptable since most on-device compass UIs behave the same way.
+ *
+ * Also the map's own location dot ([trackHeading] `false` there, no compass needed): MapLibre's
+ * built-in location engine always asks the fused provider for balanced (Wi-Fi/cell, ~100m)
+ * accuracy whatever priority it's given, too coarse to walk up to a pet with.
  */
-class LocationHeadingService(private val context: Context) {
+class LocationHeadingService(private val context: Context, private val trackHeading: Boolean = true) {
   private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
   private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
   private val rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+
+  private val _location = MutableStateFlow<Location?>(null)
+
+  /** The latest fix, with its accuracy, for MapLibre's location dot. */
+  val location: StateFlow<Location?> = _location.asStateFlow()
 
   private val _coordinate = MutableStateFlow<Coordinate?>(null)
   val coordinate: StateFlow<Coordinate?> = _coordinate.asStateFlow()
@@ -44,7 +53,10 @@ class LocationHeadingService(private val context: Context) {
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
       ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-  private val locationListener = LocationListener { location: Location ->
+  private val locationListener = LocationListener(::publish)
+
+  private fun publish(location: Location) {
+    _location.value = location
     _coordinate.value = Coordinate(location.latitude, location.longitude)
   }
 
@@ -81,6 +93,8 @@ class LocationHeadingService(private val context: Context) {
       candidates.firstOrNull { it in locationManager.allProviders && locationManager.isProviderEnabled(it) }
     if (provider != null) {
       try {
+        // Something to show right away, instead of nothing until the provider's first fresh fix.
+        if (_location.value == null) locationManager.getLastKnownLocation(provider)?.let(::publish)
         locationManager.requestLocationUpdates(provider, 1_000L, 1f, locationListener)
       } catch (e: SecurityException) {
         // Permission revoked between the check above and here.
@@ -88,7 +102,7 @@ class LocationHeadingService(private val context: Context) {
         // Provider vanished between the check above and here.
       }
     }
-    rotationSensor?.let { sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_UI) }
+    if (trackHeading) rotationSensor?.let { sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_UI) }
   }
 
   fun stopUpdating() {
