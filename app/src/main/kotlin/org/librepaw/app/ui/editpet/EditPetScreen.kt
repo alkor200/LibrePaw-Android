@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -244,8 +245,11 @@ private fun CropCircle(
     Image(
       bitmap = bitmap.asImageBitmap(),
       contentDescription = null,
+      // requiredSize, not size: the image is deliberately larger than the circle on one side (it
+      // fills it, see fillScale), and size() would be clamped to the circle's own constraints,
+      // fitting a non-square photo inside it instead, unlike the crop renderCircularCropJpeg uploads.
       modifier =
-        Modifier.size(with(density) { displayWidthPx.toDp() }, with(density) { displayHeightPx.toDp() })
+        Modifier.requiredSize(with(density) { displayWidthPx.toDp() }, with(density) { displayHeightPx.toDp() })
           .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) },
     )
   }
