@@ -44,7 +44,9 @@ fun LoginScreen(
   authenticationService: AuthenticationService,
   onLoggedIn: (StoredSession) -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: LoginViewModel = viewModel { LoginViewModel(authenticationService) },
+  /** Set when the server stopped accepting the previous session, see SessionExpiryDetectingPetRepository. */
+  expiredSession: StoredSession? = null,
+  viewModel: LoginViewModel = viewModel { LoginViewModel(authenticationService, expiredSession) },
 ) {
   LaunchedEffect(viewModel.loggedInSession) { viewModel.loggedInSession?.let(onLoggedIn) }
 

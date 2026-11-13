@@ -35,6 +35,18 @@ class LoginViewModelTest {
   }
 
   @Test
+  fun expiredSession_prefillsServerAndEmail_andSaysWhy() {
+    val expired = StoredSession("https://traccar.example.com/", "user@example.com", token = "revoked")
+
+    val viewModel = LoginViewModel(FakeAuthenticationService(), expiredSession = expired)
+
+    assertEquals("traccar.example.com", viewModel.serverUrlString)
+    assertEquals("user@example.com", viewModel.email)
+    assertEquals("", viewModel.password)
+    assertEquals(UiText(R.string.login_session_expired), viewModel.errorMessage)
+  }
+
+  @Test
   fun usesInsecureConnection_detectsHttp() {
     val viewModel = LoginViewModel(FakeAuthenticationService())
     viewModel.updateServerUrl("http://traccar.example.com")

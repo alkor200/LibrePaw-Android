@@ -41,6 +41,7 @@
     <string name="login_email">Email</string>
     <string name="login_password">Password</string>
     <string name="login_log_in">Log In</string>
+    <string name="login_session_expired">The server no longer accepts this login, e.g. because the account was disabled or its access revoked. Please sign in again.</string>
     <string name="login_insecure_connection">This server address uses an insecure connection (http). Use https instead.</string>
     <string name="settings_title">Settings</string>
     <string name="settings_account">Account</string>

@@ -22,6 +22,8 @@ import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.launch
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
+import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.data.pets.SessionExpiryDetectingPetRepository
 import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.auth.LoginScreen
 import org.librepaw.app.ui.editpet.EditPetScreen
@@ -41,7 +43,17 @@ import org.librepaw.app.ui.trail.TrailScreen
 fun MainNavigation(authenticationService: AuthenticationService, appearancePreferences: AppearancePreferences) {
   var currentSession by remember { mutableStateOf(authenticationService.restoreSession()) }
   val backStack = rememberNavBackStack(if (currentSession != null) Main else Login)
-  val petRepository = currentSession?.let { session -> remember(session) { authenticationService.makePetRepository(session) } }
+  // Set by the repository below when the server rejects the session's credentials, handled once
+  // in a LaunchedEffect further down (it can be reported several times, from any thread).
+  var rejectedSession by remember { mutableStateOf<StoredSession?>(null) }
+  // The session that ended that way, so the login screen can say why and prefill server/email.
+  var expiredSession by remember { mutableStateOf<StoredSession?>(null) }
+  val petRepository =
+    currentSession?.let { session ->
+      remember(session) {
+        SessionExpiryDetectingPetRepository(authenticationService.makePetRepository(session)) { rejectedSession = session }
+      }
+    }
   var petDataVersion by remember { mutableStateOf(0) }
   val viewModelStoreOwner = LocalViewModelStoreOwner.current
 
@@ -73,6 +85,29 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
     currentSession = newSession
   }
 
+  fun logOut(session: StoredSession, repository: PetRepository) {
+    authenticationService.logOut()
+    switchSession(null)
+    goTo(Login)
+    // After the local logout, never holding it up: both are best-effort and only tidy up the
+    // server side (the token and cookie session expire on their own).
+    coroutineScope.launch {
+      repository.endSession()
+      authenticationService.revokeSession(session)
+    }
+  }
+
+  // Only if that session is still the current one: a request still running from before a logout
+  // (or before logging in again) can fail after the fact.
+  LaunchedEffect(rejectedSession) {
+    val rejected = rejectedSession ?: return@LaunchedEffect
+    rejectedSession = null
+    val repository = petRepository
+    if (rejected != currentSession || repository == null) return@LaunchedEffect
+    logOut(rejected, repository)
+    expiredSession = rejected
+  }
+
   // A plain Box, not a Scaffold: a Scaffold's bottomBar slot reserves its own full-width,
   // solidly-colored strip for the bar, which would hide whatever content (the map, a scrolled
   // list) sits directly behind it. Overlaying the bar on top of full-size content instead means
@@ -93,7 +128,9 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
           entry<Login> {
             LoginScreen(
               authenticationService = authenticationService,
+              expiredSession = expiredSession,
               onLoggedIn = { session: StoredSession ->
+                expiredSession = null
                 switchSession(session)
                 goTo(Main)
               },
@@ -109,17 +146,7 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
                 petRepository = repository,
                 appearancePreferences = appearancePreferences,
                 onPetClick = { pet -> backStack.add(PetDetail(pet.id)) },
-                onLogOut = {
-                  authenticationService.logOut()
-                  switchSession(null)
-                  goTo(Login)
-                  // After the local logout, never holding it up: both are best-effort and only
-                  // tidy up the server side (the token and cookie session expire on their own).
-                  coroutineScope.launch {
-                    repository.endSession()
-                    authenticationService.revokeSession(session)
-                  }
-                },
+                onLogOut = { logOut(session, repository) },
                 dataVersion = petDataVersion,
                 focusPetId = mapFocusPetId,
                 onFocusConsumed = { mapFocusPetId = null },

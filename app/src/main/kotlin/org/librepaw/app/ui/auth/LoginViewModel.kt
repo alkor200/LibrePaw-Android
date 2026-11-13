@@ -15,7 +15,12 @@ import org.librepaw.app.data.traccar.TraccarError
 import org.librepaw.app.ui.common.UiText
 import org.librepaw.app.ui.common.toUiText
 
-class LoginViewModel(private val authenticationService: AuthenticationService) : ViewModel() {
+/**
+ * [expiredSession], when the server stopped accepting the previous session, prefills its server and
+ * email and says why the user is back here, same as the iOS app's LoginViewModel.
+ */
+class LoginViewModel(private val authenticationService: AuthenticationService, expiredSession: StoredSession? = null) :
+  ViewModel() {
   var serverUrlString by mutableStateOf("")
     private set
 
@@ -33,6 +38,15 @@ class LoginViewModel(private val authenticationService: AuthenticationService) :
 
   var loggedInSession by mutableStateOf<StoredSession?>(null)
     private set
+
+  init {
+    if (expiredSession != null) {
+      // Shown the way it was most likely typed, "traccar.example.com" rather than "https://traccar.example.com/".
+      serverUrlString = expiredSession.serverUrl.removePrefix("https://").removeSuffix("/")
+      email = expiredSession.email
+      errorMessage = UiText(R.string.login_session_expired)
+    }
+  }
 
   fun updateServerUrl(value: String) {
     serverUrlString = value

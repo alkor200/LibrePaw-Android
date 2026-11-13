@@ -37,6 +37,7 @@
     <string name="login_email">E-Mail</string>
     <string name="login_password">Passwort</string>
     <string name="login_log_in">Anmelden</string>
+    <string name="login_session_expired">Der Server akzeptiert diese Anmeldung nicht mehr, z. B. weil das Konto deaktiviert oder der Zugriff widerrufen wurde. Bitte melde dich erneut an.</string>
     <string name="login_insecure_connection">Diese Serveradresse nutzt eine unverschlüsselte Verbindung (http). Verwende stattdessen https.</string>
     <string name="settings_title">Einstellungen</string>
     <string name="settings_account">Konto</string>
