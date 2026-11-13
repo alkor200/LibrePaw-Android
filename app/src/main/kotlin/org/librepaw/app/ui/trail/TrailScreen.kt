@@ -72,13 +72,13 @@ private val ROUTE_PALETTE =
     Color(0xFFFFCC00), // yellow
   )
 
-private fun lineSourceId(excursionId: Int) = "trail-line-$excursionId"
+private fun lineSourceId(excursionId: Long) = "trail-line-$excursionId"
 
-private fun lineLayerId(excursionId: Int) = "trail-line-$excursionId"
+private fun lineLayerId(excursionId: Long) = "trail-line-$excursionId"
 
-private fun midpointSourceId(excursionId: Int) = "trail-midpoint-$excursionId"
+private fun midpointSourceId(excursionId: Long) = "trail-midpoint-$excursionId"
 
-private fun midpointLayerId(excursionId: Int) = "trail-midpoint-$excursionId"
+private fun midpointLayerId(excursionId: Long) = "trail-midpoint-$excursionId"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,7 +218,7 @@ private fun TrailMap(viewModel: TrailViewModel, onExcursionClick: (Excursion) ->
   MapLibreHost(modifier = modifier, onMapReady = { map = it })
 }
 
-private fun drawRoutes(style: Style, excursions: List<Excursion>, trailsByExcursionId: Map<Int, List<PetPosition>>) {
+private fun drawRoutes(style: Style, excursions: List<Excursion>, trailsByExcursionId: Map<Long, List<PetPosition>>) {
   excursions.forEachIndexed { index, excursion ->
     val positions = trailsByExcursionId[excursion.id] ?: return@forEachIndexed
     if (positions.size <= 1) return@forEachIndexed
@@ -252,7 +252,7 @@ private fun drawRoutes(style: Style, excursions: List<Excursion>, trailsByExcurs
   }
 }
 
-private fun fitCameraToAllTrails(map: MapLibreMap, trailsByExcursionId: Map<Int, List<PetPosition>>) {
+private fun fitCameraToAllTrails(map: MapLibreMap, trailsByExcursionId: Map<Long, List<PetPosition>>) {
   val positions = trailsByExcursionId.values.flatten()
   if (positions.isEmpty()) return
   if (positions.size == 1) {

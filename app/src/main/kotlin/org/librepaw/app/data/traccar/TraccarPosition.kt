@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonElement
 /** A position fix as returned by Traccar's `/api/positions` endpoint. */
 @Serializable
 data class TraccarPosition(
-  val id: Int,
+  val id: Long,
   val deviceId: Int,
   val fixTime: String,
   val latitude: Double,

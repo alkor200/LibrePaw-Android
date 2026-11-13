@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 /** An event as returned by Traccar's `/api/reports/events` endpoint. */
 @Serializable
 data class TraccarEvent(
-  val id: Int,
+  val id: Long,
   val type: String,
   val eventTime: String,
   val deviceId: Int,

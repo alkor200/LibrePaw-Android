@@ -38,7 +38,7 @@ class TrailViewModelTest {
   fun load_fetchesTrailPerExcursion() {
     val excursions = listOf(excursion(id = 1, startTime = 0L, endTime = 1000L), excursion(id = 2, startTime = 2000L, endTime = 3000L))
     val trailsByExcursionId =
-      mapOf(1 to listOf(position(0.0, 0.0), position(0.0, 0.01)), 2 to listOf(position(1.0, 1.0), position(1.0, 1.01)))
+      mapOf(1L to listOf(position(0.0, 0.0), position(0.0, 0.01)), 2L to listOf(position(1.0, 1.0), position(1.0, 1.01)))
     val repository = FakePetRepository(excursions = excursions, trailsByExcursionId = trailsByExcursionId)
     val viewModel = TrailViewModel(petId = 1, petRepository = repository)
     dispatcher.scheduler.advanceUntilIdle()
@@ -85,7 +85,7 @@ class TrailViewModelTest {
 
   private fun excursion(id: Int, startTime: Long, endTime: Long?) =
     Excursion(
-      id = id,
+      id = id.toLong(),
       startTime = startTime,
       endTime = endTime,
       startCoordinate = null,
@@ -110,7 +110,7 @@ class TrailViewModelTest {
 
 private class FakePetRepository(
   private val excursions: List<Excursion>,
-  private val trailsByExcursionId: Map<Int, List<PetPosition>>,
+  private val trailsByExcursionId: Map<Long, List<PetPosition>>,
   private val failWith: TraccarError? = null,
 ) : PetRepository {
   var fetchExcursionsCallCount = 0

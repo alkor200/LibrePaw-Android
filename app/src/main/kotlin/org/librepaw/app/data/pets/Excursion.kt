@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 /** A trip away from home and back, within a time range. `endTime == null` means still ongoing. */
 @Serializable
 data class Excursion(
-  val id: Int,
+  val id: Long,
   val startTime: Long,
   val endTime: Long?,
   val startCoordinate: Coordinate?,

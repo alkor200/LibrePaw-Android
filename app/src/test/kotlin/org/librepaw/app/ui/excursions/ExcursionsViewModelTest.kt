@@ -43,7 +43,7 @@ class ExcursionsViewModelTest {
 
     val state = viewModel.uiState.value
     assertTrue(state is ExcursionsUiState.Loaded)
-    assertEquals(listOf(2, 3, 1), (state as ExcursionsUiState.Loaded).excursions.map { it.id })
+    assertEquals(listOf(2L, 3L, 1L), (state as ExcursionsUiState.Loaded).excursions.map { it.id })
     assertEquals(mapOf(10 to "Home"), state.homeNamesById)
   }
 
@@ -72,7 +72,7 @@ class ExcursionsViewModelTest {
 
   private fun excursion(id: Int, startTime: Long) =
     Excursion(
-      id = id,
+      id = id.toLong(),
       startTime = startTime,
       endTime = startTime + 1000L,
       startCoordinate = null,

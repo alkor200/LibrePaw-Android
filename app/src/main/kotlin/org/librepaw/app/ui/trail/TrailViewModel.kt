@@ -28,7 +28,7 @@ class TrailViewModel(private val petId: Int, private val petRepository: PetRepos
   var excursions by mutableStateOf<List<Excursion>>(emptyList())
     private set
 
-  var trailsByExcursionId by mutableStateOf<Map<Int, List<PetPosition>>>(emptyMap())
+  var trailsByExcursionId by mutableStateOf<Map<Long, List<PetPosition>>>(emptyMap())
     private set
 
   var isLoading by mutableStateOf(true)
@@ -79,7 +79,7 @@ class TrailViewModel(private val petId: Int, private val petRepository: PetRepos
   /** One position-history fetch per excursion, all concurrently, each bounded to that
    * excursion's own start/end (or now, if still ongoing) so the drawn route matches exactly
    * what [org.librepaw.app.ui.excursions.ExcursionDetailScreen] would show for the same excursion. */
-  private suspend fun fetchTrails(excursions: List<Excursion>, nowEpochMillis: Long): Map<Int, List<PetPosition>> =
+  private suspend fun fetchTrails(excursions: List<Excursion>, nowEpochMillis: Long): Map<Long, List<PetPosition>> =
     coroutineScope {
       excursions
         .map { excursion ->

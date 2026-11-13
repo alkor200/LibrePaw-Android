@@ -1,7 +1,7 @@
 package org.librepaw.app.data.pets
 
 data class PetPosition(
-  val id: Int,
+  val id: Long,
   val petId: Int,
   val latitude: Double,
   val longitude: Double,

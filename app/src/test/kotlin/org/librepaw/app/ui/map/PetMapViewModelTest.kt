@@ -57,7 +57,7 @@ class PetMapViewModelTest {
       lastSeenAt = null,
       lastPosition =
         if (hasPosition) {
-          PetPosition(id = id, petId = id, latitude = 0.0, longitude = 0.0, recordedAt = 0L, speedKilometersPerHour = 0.0, address = null, batteryLevelPercent = null)
+          PetPosition(id = id.toLong(), petId = id, latitude = 0.0, longitude = 0.0, recordedAt = 0L, speedKilometersPerHour = 0.0, address = null, batteryLevelPercent = null)
         } else {
           null
         },

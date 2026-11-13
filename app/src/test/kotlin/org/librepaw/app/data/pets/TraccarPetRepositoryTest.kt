@@ -281,14 +281,14 @@ class TraccarPetRepositoryTest {
   }
 
   private fun event(id: Int, eventTime: String, geofenceId: Int = 1) =
-    TraccarEvent(id = id, type = "geofenceExit", eventTime = eventTime, deviceId = 1, geofenceId = geofenceId)
+    TraccarEvent(id = id.toLong(), type = "geofenceExit", eventTime = eventTime, deviceId = 1, geofenceId = geofenceId)
 
   private fun position(lat: Double, lon: Double, fixTime: String) =
     TraccarPosition(id = 1, deviceId = 1, fixTime = fixTime, latitude = lat, longitude = lon, speed = 0.0)
 
   private fun excursion(id: Int, startTime: Long, endTime: Long?, distanceMeters: Double? = null) =
     Excursion(
-      id = id,
+      id = id.toLong(),
       startTime = startTime,
       endTime = endTime,
       startCoordinate = null,

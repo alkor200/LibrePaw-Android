@@ -255,7 +255,7 @@ class TraccarPetRepository(
     }
 
     fun mergeExcursions(cached: CachedExcursions?, freshExcursions: List<Excursion>, liveFrom: Long): Pair<List<Excursion>, CachedExcursions> {
-      val byId = LinkedHashMap<Int, Excursion>()
+      val byId = LinkedHashMap<Long, Excursion>()
       cached?.excursions?.forEach { byId[it.id] = it }
       var watermark = cached?.cachedThroughEndTime
 

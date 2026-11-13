@@ -165,7 +165,7 @@ class PetDetailViewModelTest {
 
   private fun excursion(id: Int, startTime: Long, endTime: Long?, distanceMeters: Double?) =
     Excursion(
-      id = id,
+      id = id.toLong(),
       startTime = startTime,
       endTime = endTime,
       startCoordinate = null,
