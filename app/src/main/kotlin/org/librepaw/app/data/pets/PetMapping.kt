@@ -41,10 +41,19 @@ object PetMapping {
       else -> Pet.Status.UNKNOWN
     }
 
-  /** Traccar stores an uploaded photo's filename in the device's `deviceImage` attribute. */
+  /**
+   * Traccar stores an uploaded photo's filename in the device's `deviceImage` attribute. Both it
+   * and the device's uniqueId are only data from the server, writable by anyone who can edit the
+   * device: each goes in as a single path segment (a `/` in it is encoded, not a separator), and
+   * `.`/`..` (which OkHttp resolves even as a single segment) mean no photo. Otherwise a value like
+   * `../../users` pointed the authenticated photo fetch at any other endpoint on the server.
+   */
   private fun photoUrl(device: TraccarDevice, serverUrl: HttpUrl): HttpUrl? {
     val filename = (device.attributes["deviceImage"] as? JsonPrimitive)?.contentOrNull
-    if (filename.isNullOrBlank()) return null
-    return serverUrl.newBuilder().addPathSegments("api/media/${device.uniqueId}/$filename").build()
+    if (filename.isNullOrBlank() || isDotSegment(filename) || isDotSegment(device.uniqueId)) return null
+    return serverUrl.newBuilder().addPathSegments("api/media").addPathSegment(device.uniqueId).addPathSegment(filename).build()
   }
+
+  private fun isDotSegment(segment: String): Boolean = segment == "." || segment == ".."
+
 }

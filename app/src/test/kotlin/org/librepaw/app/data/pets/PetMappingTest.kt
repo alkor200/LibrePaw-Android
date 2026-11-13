@@ -41,6 +41,21 @@ class PetMappingTest {
   }
 
   @Test
+  fun pet_deviceImageWithSlashes_staysASingleSegmentUnderTheDevicesMedia() {
+    val device = device(attributes = mapOf("deviceImage" to JsonPrimitive("../../users")))
+    val pet = PetMapping.pet(device, latestPosition = null, serverUrl = serverUrl)
+    assertEquals("https://traccar.example.com/api/media/860000000000099/..%2F..%2Fusers", pet.photoUrl.toString())
+  }
+
+  @Test
+  fun pet_deviceImageThatIsADotSegment_hasNoPhotoUrl() {
+    for (filename in listOf(".", "..")) {
+      val device = device(attributes = mapOf("deviceImage" to JsonPrimitive(filename)))
+      assertNull(PetMapping.pet(device, latestPosition = null, serverUrl = serverUrl).photoUrl)
+    }
+  }
+
+  @Test
   fun pet_parsesLastUpdate() {
     val device = device(lastUpdate = "2024-01-02T03:04:05.000+00:00")
     val pet = PetMapping.pet(device, latestPosition = null, serverUrl = serverUrl)
