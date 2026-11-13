@@ -66,6 +66,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
@@ -384,7 +385,13 @@ private fun showUserLocation(context: Context, map: MapLibreMap, style: Style) {
   try {
     if (!locationComponent.isLocationComponentActivated) {
       locationComponent.activateLocationComponent(
-        LocationComponentActivationOptions.builder(context, style).useDefaultLocationEngine(false).build()
+        LocationComponentActivationOptions.builder(context, style)
+          .useDefaultLocationEngine(false)
+          // No grey "stale" dot after 30 seconds without an update: updates only arrive when the
+          // user actually moves (LocationHeadingService asks for 1m of displacement), so standing
+          // still would otherwise look like a lost fix.
+          .locationComponentOptions(LocationComponentOptions.builder(context).enableStaleState(false).build())
+          .build()
       )
     }
     locationComponent.isLocationComponentEnabled = true
