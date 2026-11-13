@@ -126,6 +126,7 @@ class TraccarPetRepository(
     val liveFrom = liveFetchStart(cached, fromEpochMillis)
 
     var freshExcursions = emptyList<Excursion>()
+    var provisionalIds = emptySet<Long>()
     if (liveFrom < toEpochMillis) {
       val (exits, enters) =
         coroutineScope {
@@ -141,17 +142,24 @@ class TraccarPetRepository(
         }
 
       val pairs = pairHomeExitsWithEnters(exits, enters)
-      freshExcursions =
-        pairs
-          .concurrentMap(maxConcurrent = 20) { pair -> makeExcursion(petId, pair.first, pair.second, homes) }
-          .filter { !isDegenerate(it) }
+      // Bounded rather than fully unbounded: a pet with years of history backfilling the cache for
+      // the first time would otherwise fire a request per excursion all at once.
+      val resolved =
+        pairs.concurrentMap(maxConcurrent = 20) { (exit, enter) ->
+          makeExcursions(petId, exit, enter, homes) to (enter != null)
+        }
+      freshExcursions = resolved.flatMap { it.first }.filter { !isDegenerate(it) }
+      // Everything split out of a pair Traccar hasn't closed yet is provisional, even a part that
+      // already ended at a homecoming pause: later positions can still turn the rest of the pair
+      // into further excursions, see mergeExcursions.
+      provisionalIds = resolved.filter { !it.second }.flatMap { (excursions, _) -> excursions.map { it.id } }.toSet()
     }
 
     // Merged against whatever is stored *now*, not `cached` from before the fetch: another
     // concurrent call for the same pet may have saved in the meantime (see ExcursionCacheStore.update).
     val all =
       excursionCacheStore.update(petId, serverHost) { latest ->
-        val (all, newCache) = mergeExcursions(latest, freshExcursions, liveFrom)
+        val (all, newCache) = mergeExcursions(latest, freshExcursions, liveFrom, provisionalIds)
         newCache to all
       }
 
@@ -169,7 +177,12 @@ class TraccarPetRepository(
     val serverHost = client.serverUrl.host
     val cached = lifetimeStatsStore.load(petId, serverHost)
 
-    val recentExcursions = fetchExcursions(petId, cached?.cachedThroughEndTime ?: 0L, System.currentTimeMillis())
+    // The whole history, not just from this cache's own watermark: that can fall in the middle of a
+    // still-open exit/enter pair (a walk closed by a homecoming pause, Traccar still waiting for an
+    // enter), and the next walk split out of that pair only exists when the pair is evaluated from
+    // its exit. mergeLifetimeStats skips whatever was already counted, and fetchExcursions serves
+    // everything final from its own cache.
+    val recentExcursions = fetchExcursions(petId, 0L, System.currentTimeMillis())
 
     val (stats, newCache) = mergeLifetimeStats(cached, recentExcursions)
     lifetimeStatsStore.save(newCache, petId, serverHost)
@@ -180,59 +193,20 @@ class TraccarPetRepository(
     lifetimeStatsStore.clear(petId, client.serverUrl.host)
   }
 
-  private suspend fun makeExcursion(petId: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: List<HomeGeofence>): Excursion {
+  /** Every excursion one exit/enter pair stands for, see [splitIntoExcursions]. */
+  private suspend fun makeExcursions(petId: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: List<HomeGeofence>): List<Excursion> {
     val exitTime = TraccarDates.parse(exit.eventTime) ?: 0L
-    val fetchedEndTime = enter?.eventTime?.let(TraccarDates::parse)
-    // Also the bound a trailing position's "quiet gap" is measured against when nothing newer has
-    // been recorded yet (see firstHomecomingPause): for a still-open excursion this is genuinely
-    // "now", not an unconditional pass, since a single position moments after leaving (e.g. checking
-    // the app 50m from the front door) would otherwise look exactly like an infinitely long silence
-    // purely because a second position hasn't streamed in yet, not because the pet actually stopped.
-    val trailEndTime = fetchedEndTime ?: System.currentTimeMillis()
+    // For a still-open pair, "now" is what a trailing position's quiet gap is measured against: a
+    // single position moments after leaving (e.g. checking the app 50m from the front door) would
+    // otherwise look exactly like an infinitely long silence purely because a second fix hasn't
+    // streamed in yet, not because the pet stopped.
+    val trailEndTime = enter?.eventTime?.let(TraccarDates::parse) ?: System.currentTimeMillis()
     // Not caught: a failed fetch here must fail the whole call rather than produce an excursion
     // with no route and no distance, a closed one of those would be cached for good and folded
     // into lifetime stats as zero meters, never recomputed. Failing instead just means the next
     // load tries again.
-    val fullTrail = client.fetchPositionHistory(petId, exitTime, trailEndTime)
-
-    var endTime = fetchedEndTime
-    var endHomeId = enter?.geofenceId
-    var trail = fullTrail
-
-    // Only required while the excursion is still open (no real enter event exists yet): the whole
-    // fetched trail necessarily belongs to this one still-ongoing excursion (Traccar hasn't closed
-    // it), so checking that the pet stays near home for the rest of what's known so far safely tells
-    // a real early return apart from a brief mid-walk signal gap, without any risk of a later,
-    // separately-reopened excursion's data bleeding in (see the already-closed branch below). Once a
-    // real enter event exists, the original, simpler check applies: that case is already bounded by
-    // two real Traccar events, confirmed live against a real tracker's multi-hour buffering delay.
-    val homecoming =
-      firstHomecomingPause(
-        fullTrail,
-        homes,
-        requireStaysHomeAfterward = fetchedEndTime == null,
-        trailEndTimeMillis = trailEndTime,
-      )
-    if (homecoming != null && shouldPreferHomecoming(homecoming, fetchedEndTime)) {
-      endTime = homecoming.fixTime
-      endHomeId = homecoming.homeId
-      trail = fullTrail.filter { (TraccarDates.parse(it.fixTime) ?: 0L) <= homecoming.fixTime }
-    }
-
-    val coordinates = trail.sortedBy { TraccarDates.parse(it.fixTime) ?: 0L }.map { Coordinate(it.latitude, it.longitude) }
-    val distance =
-      if (coordinates.size > 1) coordinates.zipWithNext().sumOf { (a, b) -> a.distanceMeters(b) } else null
-
-    return Excursion(
-      id = exit.id,
-      startTime = exitTime,
-      endTime = endTime,
-      startCoordinate = coordinates.firstOrNull(),
-      endCoordinate = coordinates.lastOrNull(),
-      distanceMeters = distance,
-      startHomeId = exit.geofenceId,
-      endHomeId = endHomeId,
-    )
+    val trail = client.fetchPositionHistory(petId, exitTime, trailEndTime)
+    return splitIntoExcursions(exit, enter, trail, homes, trailEndTime)
   }
 
   companion object {
@@ -246,25 +220,48 @@ class TraccarPetRepository(
     const val QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS = 5 * 60 * 1000L
 
     /**
-     * Where to start a live fetch from, given what's already cached. Only narrows to the watermark
-     * when the cache's own coverage already reaches back to (or before) `from`.
+     * Where to start a live fetch from, given what's already cached. Uses the watermark when the
+     * cache's own coverage already reaches back to (or before) `from`, never when there's a gap
+     * between the true start of history and wherever an earlier, narrower call first populated
+     * this cache (see [CachedExcursions.coveredFrom]).
+     *
+     * The watermark even when `from` is later: everything after it is what isn't final yet, and the
+     * exit event that opened it can lie before `from`. Starting at `from` instead missed that exit,
+     * and with it every walk split out of a still-open pair (see [splitIntoExcursions]), e.g. this
+     * afternoon's walk for a request starting after this morning's.
      */
     fun liveFetchStart(cached: CachedExcursions?, from: Long): Long {
       val coveredFrom = cached?.coveredFrom
       val watermark = cached?.cachedThroughEndTime
       if (coveredFrom != null && coveredFrom <= from && watermark != null) {
-        return maxOf(from, watermark)
+        return watermark
       }
       return from
     }
 
-    fun mergeExcursions(cached: CachedExcursions?, freshExcursions: List<Excursion>, liveFrom: Long): Pair<List<Excursion>, CachedExcursions> {
+    /**
+     * Folds [freshExcursions] into [cached], keyed by id so re-fetching one already cached never
+     * duplicates it, a fresh copy simply wins. Only final excursions are kept in the returned cache
+     * and advance its watermark: closed (`endTime != null`) and not in [provisionalIds], i.e. not
+     * split out of a pair Traccar hasn't closed yet. Anything else is included in the returned list
+     * (what the caller actually sees) but never persisted. A provisional excursion that already
+     * ended at a homecoming pause used to be cached anyway, moving the watermark past the still-open
+     * exit event, so the next walk, which Traccar never gives an exit of its own, was never looked
+     * for again.
+     */
+    fun mergeExcursions(
+      cached: CachedExcursions?,
+      freshExcursions: List<Excursion>,
+      liveFrom: Long,
+      provisionalIds: Set<Long> = emptySet(),
+    ): Pair<List<Excursion>, CachedExcursions> {
       val byId = LinkedHashMap<Long, Excursion>()
       cached?.excursions?.forEach { byId[it.id] = it }
       var watermark = cached?.cachedThroughEndTime
 
       for (excursion in freshExcursions) {
         byId[excursion.id] = excursion
+        if (excursion.id in provisionalIds) continue
         val endTime = excursion.endTime
         if (endTime != null && (watermark == null || endTime > watermark)) {
           watermark = endTime
@@ -285,7 +282,7 @@ class TraccarPetRepository(
           liveFrom
         }
 
-      val closed = byId.values.filter { it.endTime != null }
+      val closed = byId.values.filter { it.endTime != null && it.id !in provisionalIds }
       val newCache = CachedExcursions(excursions = closed, coveredFrom = coveredFrom, cachedThroughEndTime = watermark)
       return byId.values.toList() to newCache
     }
@@ -315,52 +312,207 @@ class TraccarPetRepository(
     }
 
     /**
+     * Turns one exit/enter pair, and the position trail between them, into the excursions it
+     * actually stands for: usually one, but several when the trail shows the pet coming home and
+     * leaving again in between without Traccar ever noticing (see ADR-0029 on the iOS side).
+     *
+     * Traccar only logs `geofenceEnter`/`geofenceExit` when a reported position crosses the exact
+     * boundary. A tracker that falls asleep a few meters short of it on the way home never reports
+     * the crossing, and when it wakes up for the next walk it's often already outside again, so
+     * that walk gets no exit event either. Confirmed live with Phoebe: one exit at 08:39 and one
+     * enter at 16:12 for what were really two walks, 08:39 to 09:17 (asleep 42m from the center of
+     * a 40m home) and 15:12 to 16:12 (woke up 126m away). Treating the pair as one excursion lost
+     * the afternoon walk entirely.
+     *
+     * Walks the trail segment by segment:
+     * - A segment ends at its first homecoming pause (see [firstHomecomingPause]) if that's
+     *   genuinely earlier than the real enter event (see [shouldPreferHomecoming]), otherwise at the
+     *   enter event itself, or not at all while the pair is still open.
+     * - After a pause, the next segment starts where the trail next goes clearly away from every
+     *   home (beyond radius plus [HOME_PROXIMITY_SLACK_METERS]), backdated over the moving
+     *   positions right before it that are already outside the home's own radius (see
+     *   [nextDepartureIndex]). No such position, no further segment: the pet stayed home.
+     * - A segment that never got clearly away before its pause, and is followed by a departure,
+     *   wasn't a trip of its own: an exit that was only GPS jitter at the fence (confirmed live,
+     *   Phoebe "left" at 48m from a 40m home and slept there for hours before the real walk the
+     *   next day), or a few minutes without signal by the front door. That stub is dropped, and the
+     *   walk after it keeps the exit's id but starts at its real departure, rather than stretching
+     *   from the jitter all the way through the night. This replaces the earlier
+     *   `requireStaysHomeAfterward` guard, which protected against the front door case by refusing
+     *   any pause the pet later walked away from, and with it also refused the genuine homecoming
+     *   above.
+     *
+     * The first segment keeps the exit event's id. A later one has no event of its own, so it's
+     * identified by its first position's id, negated so it can never collide with an event id, and
+     * stable across recomputations since history only ever gets appended to.
+     */
+    fun splitIntoExcursions(
+      exit: TraccarEvent,
+      enter: TraccarEvent?,
+      trail: List<TraccarPosition>,
+      homes: List<HomeGeofence>,
+      trailEndTimeMillis: Long,
+    ): List<Excursion> {
+      val sorted = trail.sortedBy(::fixTimeOf)
+      val enterTime = enter?.eventTime?.let(TraccarDates::parse)
+      val excursions = mutableListOf<Excursion>()
+
+      var segmentId = exit.id
+      var segmentStartTime = TraccarDates.parse(exit.eventTime) ?: 0L
+      var segmentStartHomeId = exit.geofenceId
+      var segmentStartIndex = 0
+
+      while (true) {
+        val pause =
+          homecomingPauseIndex(sorted, segmentStartIndex, homes, trailEndTimeMillis = trailEndTimeMillis)?.takeIf { (index, homeId) ->
+            shouldPreferHomecoming(Homecoming(fixTimeOf(sorted[index]), homeId), enterTime)
+          }
+
+        if (pause == null) {
+          excursions +=
+            excursion(
+              id = segmentId,
+              startTime = segmentStartTime,
+              endTime = enterTime,
+              positions = sorted.subList(minOf(segmentStartIndex, sorted.size), sorted.size),
+              startHomeId = segmentStartHomeId,
+              endHomeId = enter?.geofenceId,
+            )
+          return excursions
+        }
+
+        val (pauseIndex, pauseHomeId) = pause
+        val departureIndex = nextDepartureIndex(sorted, pauseIndex, homes)
+        val segmentWentAway = sorted.subList(segmentStartIndex, pauseIndex + 1).any { !isNearAnyHome(it, homes) }
+
+        if (segmentWentAway || departureIndex == null) {
+          excursions +=
+            excursion(
+              id = segmentId,
+              startTime = segmentStartTime,
+              endTime = fixTimeOf(sorted[pauseIndex]),
+              positions = sorted.subList(segmentStartIndex, pauseIndex + 1),
+              startHomeId = segmentStartHomeId,
+              endHomeId = pauseHomeId,
+            )
+        }
+
+        if (departureIndex == null) return excursions
+        if (segmentWentAway) {
+          // A walk of its own, with no event of its own.
+          segmentId = -sorted[departureIndex].id
+          segmentStartHomeId = pauseHomeId
+        }
+        // Otherwise the stub before it was no trip at all (see the doc comment), the walk is still
+        // this exit's own excursion.
+        segmentStartTime = fixTimeOf(sorted[departureIndex])
+        segmentStartIndex = departureIndex
+      }
+    }
+
+    /**
+     * Where the trail next leaves home for real after [pauseIndex]: the first position clearly away
+     * from every home (beyond its radius plus [HOME_PROXIMITY_SLACK_METERS], so pottering about just
+     * outside the fence doesn't count), backdated over the positions right before it that are
+     * already outside every home's own radius, i.e. to where the pet actually crossed out.
+     * Backdating stops at a quiet gap: a position followed by [QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS]
+     * of silence is the tracker asleep at home, not the start of the walk, even if it happens to lie
+     * just outside the fence. `null` if it never leaves.
+     */
+    private fun nextDepartureIndex(sorted: List<TraccarPosition>, pauseIndex: Int, homes: List<HomeGeofence>): Int? {
+      val awayIndex = (pauseIndex + 1 until sorted.size).firstOrNull { !isNearAnyHome(sorted[it], homes) } ?: return null
+      var departureIndex = awayIndex
+      while (departureIndex - 1 > pauseIndex) {
+        val previous = sorted[departureIndex - 1]
+        val gap = fixTimeOf(sorted[departureIndex]) - fixTimeOf(previous)
+        if (isNearAnyHome(previous, homes, proximitySlackMeters = 0.0) || gap >= QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS) break
+        departureIndex--
+      }
+      return departureIndex
+    }
+
+    private fun excursion(
+      id: Long,
+      startTime: Long,
+      endTime: Long?,
+      positions: List<TraccarPosition>,
+      startHomeId: Int?,
+      endHomeId: Int?,
+    ): Excursion {
+      val coordinates = positions.map { Coordinate(it.latitude, it.longitude) }
+      val distance = if (coordinates.size > 1) coordinates.zipWithNext().sumOf { (a, b) -> a.distanceMeters(b) } else null
+      return Excursion(
+        id = id,
+        startTime = startTime,
+        endTime = endTime,
+        startCoordinate = coordinates.firstOrNull(),
+        endCoordinate = coordinates.lastOrNull(),
+        distanceMeters = distance,
+        startHomeId = startHomeId,
+        endHomeId = endHomeId,
+      )
+    }
+
+    private fun fixTimeOf(position: TraccarPosition): Long = TraccarDates.parse(position.fixTime) ?: 0L
+
+    private fun nearHome(position: TraccarPosition, homes: List<HomeGeofence>, proximitySlackMeters: Double): HomeGeofence? {
+      val coordinate = Coordinate(position.latitude, position.longitude)
+      return homes.firstOrNull { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters }
+    }
+
+    private fun isNearAnyHome(
+      position: TraccarPosition,
+      homes: List<HomeGeofence>,
+      proximitySlackMeters: Double = HOME_PROXIMITY_SLACK_METERS,
+    ): Boolean = nearHome(position, homes, proximitySlackMeters) != null
+
+    /**
      * Finds the earliest trail position that's both near a home (within its radius plus slack) and
      * followed by a long enough quiet gap, treating that as the excursion's true end even without a
      * real `geofenceEnter` event (a tracker's own firmware sleep mode can trigger a few meters short
-     * of the boundary).
-     *
-     * [requireStaysHomeAfterward], set only for a still-open excursion (see [makeExcursion]), rejects
-     * a candidate if the trail resumes with the pet clearly elsewhere: a quiet gap right after leaving
-     * (e.g. a brief signal dead spot while still chatting by the front door) can otherwise look
-     * identical to a real, early return, closing out what's actually about to become a much longer
-     * walk — and since Traccar hasn't closed this excursion yet, the real enter event that eventually
-     * arrives would have no exit left to pair with (the cached, too-early closure already consumed
-     * it), silently losing the whole walk rather than just mis-timing it.
+     * of the boundary). A quiet gap that has already happened in the historical trail is a fixed
+     * fact: re-running this later, even with a second walk's positions now appended after it, finds
+     * the same gap in the same place. What follows the pause is [splitIntoExcursions]'s concern,
+     * not this function's.
      *
      * [trailEndTimeMillis] is what a trailing position (one with nothing recorded after it yet)
      * measures its own "quiet gap" against, instead of treating that as an unconditional, infinite
-     * pass: for a still-open excursion that bound is genuinely "now" (see [makeExcursion]), since a
+     * pass: for a still-open excursion that bound is genuinely "now" (see [makeExcursions]), since a
      * single position moments after leaving (e.g. checking the app 50m from the front door, with no
      * second fix having streamed in yet) would otherwise look exactly like an infinitely long silence
      * purely from the absence of more data so far, not because the pet actually went quiet. For an
-     * already-closed pair it's the real enter event's own time, matching the original, validated
-     * tracker-fell-asleep scenario (confirmed live: nothing else was ever recorded before that event).
+     * already-closed pair it's the real enter event's own time.
      */
     fun firstHomecomingPause(
       trail: List<TraccarPosition>,
       homes: List<HomeGeofence>,
       proximitySlackMeters: Double = HOME_PROXIMITY_SLACK_METERS,
       minimumQuietGapMillis: Long = QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS,
-      requireStaysHomeAfterward: Boolean = false,
       trailEndTimeMillis: Long = Long.MAX_VALUE,
     ): Homecoming? {
-      val sorted = trail.sortedBy { TraccarDates.parse(it.fixTime) ?: 0L }
-      fun isNearAnyHome(position: TraccarPosition): Boolean {
-        val coordinate = Coordinate(position.latitude, position.longitude)
-        return homes.any { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters }
-      }
-      for (index in sorted.indices) {
-        val position = sorted[index]
-        val coordinate = Coordinate(position.latitude, position.longitude)
-        val nearestHome =
-          homes.firstOrNull { coordinate.distanceMeters(it.center) <= it.radiusMeters + proximitySlackMeters } ?: continue
-        val positionTime = TraccarDates.parse(position.fixTime) ?: 0L
-        val remainder = sorted.subList(index + 1, sorted.size)
-        val nextTime = remainder.firstOrNull()?.let { TraccarDates.parse(it.fixTime) } ?: trailEndTimeMillis
-        val gap = nextTime - positionTime
-        if (gap >= minimumQuietGapMillis && (!requireStaysHomeAfterward || remainder.all(::isNearAnyHome))) {
-          return Homecoming(positionTime, nearestHome.id)
+      val sorted = trail.sortedBy(::fixTimeOf)
+      val (index, homeId) =
+        homecomingPauseIndex(sorted, 0, homes, proximitySlackMeters, minimumQuietGapMillis, trailEndTimeMillis) ?: return null
+      return Homecoming(fixTimeOf(sorted[index]), homeId)
+    }
+
+    /**
+     * [firstHomecomingPause] on an already-sorted trail, starting at [startIndex], returning the
+     * pause's index (and its home's id) so [splitIntoExcursions] can pick up right after it.
+     */
+    private fun homecomingPauseIndex(
+      sorted: List<TraccarPosition>,
+      startIndex: Int,
+      homes: List<HomeGeofence>,
+      proximitySlackMeters: Double = HOME_PROXIMITY_SLACK_METERS,
+      minimumQuietGapMillis: Long = QUIET_GAP_AFTER_HOME_PROXIMITY_MILLIS,
+      trailEndTimeMillis: Long,
+    ): Pair<Int, Int>? {
+      for (index in startIndex until sorted.size) {
+        val home = nearHome(sorted[index], homes, proximitySlackMeters) ?: continue
+        val nextTime = if (index + 1 < sorted.size) fixTimeOf(sorted[index + 1]) else trailEndTimeMillis
+        if (nextTime - fixTimeOf(sorted[index]) >= minimumQuietGapMillis) {
+          return index to home.id
         }
       }
       return null

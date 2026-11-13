@@ -53,9 +53,11 @@ class ExcursionCacheStore(private val prefs: SharedPreferences) {
       result
     }
 
-  // v2: caches written before the coverage-gap fix in TraccarPetRepository.mergeExcursions may
-  // already be missing excursions for good, a new key rebuilds every one of them once.
-  private fun key(petId: Int, serverHost: String) = "v2:$serverHost:$petId"
+  // v3: caches written before TraccarPetRepository.splitIntoExcursions can hold a walk closed at a
+  // homecoming pause as final while its exit/enter pair was still open, with the watermark past the
+  // exit, so the next walk is missing for good. v2 was the same for the coverage-gap fix in
+  // mergeExcursions. A new key rebuilds every one of them once.
+  private fun key(petId: Int, serverHost: String) = "v3:$serverHost:$petId"
 
   companion object {
     /** Must match the exclusion rules in `backup_rules.xml` / `data_extraction_rules.xml`. */

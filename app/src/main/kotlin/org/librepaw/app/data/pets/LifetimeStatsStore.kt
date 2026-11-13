@@ -33,9 +33,9 @@ class LifetimeStatsStore(private val prefs: SharedPreferences) {
     prefs.edit().clear().apply()
   }
 
-  // v2: rebuilt together with the excursions cache (see its own key), totals folded from a
-  // gapped cache would stay short forever.
-  private fun key(petId: Int, serverHost: String) = "v2:$serverHost:$petId"
+  // v3 (and v2 before it): rebuilt together with the excursions cache (see its own key), totals
+  // folded from a cache missing walks would stay short forever.
+  private fun key(petId: Int, serverHost: String) = "v3:$serverHost:$petId"
 
   companion object {
     /** Must match the exclusion rules in `backup_rules.xml` / `data_extraction_rules.xml`. */
