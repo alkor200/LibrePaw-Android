@@ -184,12 +184,11 @@ class TraccarPetRepository(
     // the app 50m from the front door) would otherwise look exactly like an infinitely long silence
     // purely because a second position hasn't streamed in yet, not because the pet actually stopped.
     val trailEndTime = fetchedEndTime ?: System.currentTimeMillis()
-    val fullTrail =
-      try {
-        client.fetchPositionHistory(petId, exitTime, trailEndTime)
-      } catch (e: TraccarError) {
-        emptyList()
-      }
+    // Not caught: a failed fetch here must fail the whole call rather than produce an excursion
+    // with no route and no distance, a closed one of those would be cached for good and folded
+    // into lifetime stats as zero meters, never recomputed. Failing instead just means the next
+    // load tries again.
+    val fullTrail = client.fetchPositionHistory(petId, exitTime, trailEndTime)
 
     var endTime = fetchedEndTime
     var endHomeId = enter?.geofenceId
