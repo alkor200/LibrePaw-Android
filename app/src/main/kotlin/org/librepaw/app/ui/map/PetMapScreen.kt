@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -213,9 +216,10 @@ private fun PetMarkersMap(
 
   // MapLibre's logo and attribution sit at the map's bottom edge, which the floating tab bar
   // covers: moved up to just above it, the same as iOS's ornament row.
-  LaunchedEffect(map) {
+  val ornamentBottomPx = with(density) { (mapBottomBarClearance() + 8.dp).roundToPx() }
+  LaunchedEffect(map, ornamentBottomPx) {
     val uiSettings = map?.uiSettings ?: return@LaunchedEffect
-    val bottom = with(density) { (BottomBarClearance + 8.dp).roundToPx() }
+    val bottom = ornamentBottomPx
     uiSettings.setLogoMargins(uiSettings.logoMarginLeft, uiSettings.logoMarginTop, uiSettings.logoMarginRight, bottom)
     uiSettings.setAttributionMargins(
       uiSettings.attributionMarginLeft,
@@ -331,10 +335,18 @@ private fun PetMarkersMap(
         }
       },
       // Above the logo/attribution row, which itself sits just above the tab bar (see above).
-      modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = BottomBarClearance + 48.dp),
+      modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = mapBottomBarClearance() + 48.dp),
     )
   }
 }
+
+/**
+ * The tab bar's clearance from the screen's bottom edge: the map draws edge to edge without a
+ * Scaffold, so unlike other screens it has to add the system navigation bar itself (see
+ * [BottomBarClearance]).
+ */
+@Composable
+private fun mapBottomBarClearance(): Dp = BottomBarClearance + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
 @Composable
 private fun LocateButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -418,7 +430,7 @@ private fun markerCameraPadding(): CameraPadding {
   val margin = with(density) { 24.dp.roundToPx() }
   val markerHalf = PetMarkerIconFactory.SIZE_PX / 2
   val statusBar = WindowInsets.statusBars.getTop(density)
-  val bottomBar = with(density) { BottomBarClearance.roundToPx() }
+  val bottomBar = with(density) { mapBottomBarClearance().roundToPx() }
   return CameraPadding(
     left = markerHalf + margin,
     top = statusBar + markerHalf + margin,

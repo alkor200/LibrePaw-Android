@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,9 @@ import org.librepaw.app.R
  * each screen needs to add this itself (its own Scaffold's innerPadding knows nothing about a bar
  * living one level up). Matches the bar's own vertical padding (12dp) + content padding (10dp) +
  * icon/label height (roughly 42dp) + a little breathing room.
+ *
+ * Measured from the top of the system navigation bar, which is where a Scaffold's innerPadding
+ * already ends: a screen drawing edge to edge without one (the map) adds that bar's height itself.
  */
 val BottomBarClearance = 96.dp
 
@@ -43,7 +47,10 @@ val BottomBarClearance = 96.dp
 @Composable
 fun AppBottomBar(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit, modifier: Modifier = Modifier) {
   Surface(
-    modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+    // Above the system navigation bar, not under it: with three-button navigation (any Android
+    // version, a user setting) the back/home/recents buttons otherwise covered the tabs, since
+    // the app draws edge to edge. Gesture navigation's thin handle had hidden that.
+    modifier = modifier.navigationBarsPadding().fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
     shape = RoundedCornerShape(28.dp),
     color = MaterialTheme.colorScheme.surface,
     shadowElevation = 6.dp,
