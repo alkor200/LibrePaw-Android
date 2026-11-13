@@ -24,12 +24,23 @@ class LiveAuthenticationService(
     TraccarClient(credentials).fetchDevices()
 
     val session = StoredSession(serverUrl.toString(), email, password)
+    // Also cleans up after builds from before logOut cleared these, whatever they left behind
+    // belongs to some earlier account.
+    clearLocalCaches()
     credentialStore.save(session)
     return session
   }
 
   override fun logOut() {
+    // Before the credentials, so a failing clear of those can't skip this.
+    clearLocalCaches()
     credentialStore.clear()
+  }
+
+  /** Everything derived from one account's server data, see [ExcursionCacheStore.clearAll]. */
+  private fun clearLocalCaches() {
+    excursionCacheStore.clearAll()
+    lifetimeStatsStore.clearAll()
   }
 
   override fun makePetRepository(session: StoredSession): PetRepository {

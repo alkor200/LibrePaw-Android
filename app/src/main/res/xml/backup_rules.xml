@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Note: This file is ignored for devices older than API 31
+   Used for Auto Backup on Android 6 to 11 (API 23 to 30). From Android 12 on,
+   data_extraction_rules.xml applies instead, keep both in sync.
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
@@ -9,4 +10,12 @@
    See EncryptedCredentialStore.PREFS_FILE_NAME.
    -->
     <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
+    <!--
+   Cached excursions (start/end coordinates, i.e. where the pet lives) and
+   lifetime totals are derived from one account's server data and cleared on
+   logout, they're rebuilt from the server anyway. See
+   ExcursionCacheStore.PREFS_FILE_NAME and LifetimeStatsStore.PREFS_FILE_NAME.
+   -->
+    <exclude domain="sharedpref" path="librepaw_excursion_cache.xml"/>
+    <exclude domain="sharedpref" path="librepaw_lifetime_stats.xml"/>
 </full-backup-content>

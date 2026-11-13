@@ -29,6 +29,17 @@ class ExcursionCacheStore(private val prefs: SharedPreferences) {
   }
 
   /**
+   * Removes every pet's cached excursions, earlier key versions included. Neither this store's
+   * keys nor [LifetimeStatsStore]'s include the account, only server host and pet id, so whatever
+   * one account cached (start/end coordinates, home ids, including excursions against homes only
+   * that account could see) would otherwise surface for the next account to sign in to the same
+   * server.
+   */
+  fun clearAll() {
+    synchronized(UPDATE_LOCK) { prefs.edit().clear().apply() }
+  }
+
+  /**
    * Loads, transforms and saves in one step that no other [update] for any pet can interleave
    * with, unlike a separate [load] then [save]. fetchExcursions runs concurrently for the same pet
    * (e.g. Pet Detail loads lifetime stats and today's excursions side by side), and a plain
@@ -47,7 +58,8 @@ class ExcursionCacheStore(private val prefs: SharedPreferences) {
   private fun key(petId: Int, serverHost: String) = "v2:$serverHost:$petId"
 
   companion object {
-    private const val PREFS_FILE_NAME = "librepaw_excursion_cache"
+    /** Must match the exclusion rules in `backup_rules.xml` / `data_extraction_rules.xml`. */
+    const val PREFS_FILE_NAME = "librepaw_excursion_cache"
 
     /** Shared by every instance, they all read and write the same preferences file. */
     private val UPDATE_LOCK = Any()

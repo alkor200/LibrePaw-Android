@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?><!--
+   Used from Android 12 (API 31) on, backup_rules.xml covers older versions,
+   keep both in sync.
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
 
    The stored Traccar session must never leave this device, matching the iOS
    app's kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly Keychain choice.
-   See EncryptedCredentialStore.PREFS_FILE_NAME.
+   See EncryptedCredentialStore.PREFS_FILE_NAME. Cached excursions and lifetime
+   totals hold location data derived from one account's server data, see
+   backup_rules.xml.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
+        <exclude domain="sharedpref" path="librepaw_excursion_cache.xml"/>
+        <exclude domain="sharedpref" path="librepaw_lifetime_stats.xml"/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
+        <exclude domain="sharedpref" path="librepaw_excursion_cache.xml"/>
+        <exclude domain="sharedpref" path="librepaw_lifetime_stats.xml"/>
     </device-transfer>
 </data-extraction-rules>
