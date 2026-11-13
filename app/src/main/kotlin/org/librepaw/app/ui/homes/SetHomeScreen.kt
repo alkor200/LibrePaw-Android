@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,13 +28,17 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -141,6 +146,18 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
   var map by remember { mutableStateOf<MapLibreMap?>(null) }
   val styleUrl = if (LocalDarkTheme.current) DARK_MAP_STYLE_URL else LIGHT_MAP_STYLE_URL
   val homeCircleColor = MaterialTheme.colorScheme.primary.toArgb()
+  // How much of the map, from the bottom, the form card and the tab bar cover. The pin and the
+  // camera's center both sit in the middle of what's left: on a shorter screen (or with
+  // three-button navigation) the card used to cover the screen's center, hiding exactly the pin
+  // that shows where the home goes.
+  val bottomBarClearancePx = with(LocalDensity.current) { BottomBarClearance.roundToPx() }
+  var cardHeightPx by remember { mutableIntStateOf(0) }
+  val coveredBottomPx = cardHeightPx + bottomBarClearancePx
+
+  LaunchedEffect(map, coveredBottomPx) {
+    // Padding keeps the camera's target coordinate, only moving where on screen it's drawn.
+    map?.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, coveredBottomPx.toDouble()))
+  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     MapLibreHost(
@@ -165,16 +182,19 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
       map?.style?.let { style -> updateHomeCircle(style, viewModel.center, viewModel.radiusMeters) }
     }
 
-    // A fixed pin at the exact screen center; the map pans underneath it (drop-a-pin UX).
+    // A fixed pin at the center of the visible map; the map pans underneath it (drop-a-pin UX).
     Icon(
       Icons.Filled.Place,
       contentDescription = null,
-      modifier = Modifier.align(Alignment.Center).padding(bottom = 32.dp),
+      modifier = Modifier.align(Alignment.Center).offset { IntOffset(0, -coveredBottomPx / 2) }.padding(bottom = 32.dp),
       tint = MaterialTheme.colorScheme.error,
     )
 
     Surface(
-      modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = BottomBarClearance),
+      modifier =
+        Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = BottomBarClearance).onSizeChanged {
+          cardHeightPx = it.height
+        },
       shape = MaterialTheme.shapes.large,
       color = MaterialTheme.colorScheme.surface,
       shadowElevation = 8.dp,
