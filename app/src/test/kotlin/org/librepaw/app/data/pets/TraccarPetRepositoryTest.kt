@@ -249,6 +249,38 @@ class TraccarPetRepositoryTest {
     assertTrue(newCache.excursions.isEmpty())
   }
 
+  @Test
+  fun mergeExcursions_liveFetchAfterWatermark_restartsCoverageInsteadOfClaimingTheGap() {
+    val day = 86_400_000L
+    val now = System.currentTimeMillis()
+    val coveredFrom = now - 30 * day
+    val watermark = now - 4 * day
+    val cached =
+      CachedExcursions(excursions = listOf(excursion(1, watermark - 3_600_000L, watermark)), coveredFrom = coveredFrom, cachedThroughEndTime = watermark)
+    // E.g. a 24-hour Trail window opened four days after the cache was last updated: the three
+    // days between the watermark and liveFrom were never fetched.
+    val liveFrom = now - day
+    val fresh = listOf(excursion(2, now - 7_200_000L, now - 3_600_000L))
+
+    val (_, newCache) = TraccarPetRepository.mergeExcursions(cached, fresh, liveFrom)
+
+    assertEquals(liveFrom, newCache.coveredFrom)
+    assertEquals(now - 3_600_000L, newCache.cachedThroughEndTime)
+    // And so a later, wider request re-fetches the gap instead of trusting the advanced watermark.
+    assertEquals(coveredFrom, TraccarPetRepository.liveFetchStart(newCache, from = coveredFrom))
+  }
+
+  @Test
+  fun mergeExcursions_liveFetchBeforeCoverage_extendsCoverageBackToIt() {
+    val now = System.currentTimeMillis()
+    val cached = CachedExcursions(excursions = emptyList(), coveredFrom = now - 86_400_000L, cachedThroughEndTime = now - 3_600_000L)
+    val liveFrom = now - 7 * 86_400_000L
+
+    val (_, newCache) = TraccarPetRepository.mergeExcursions(cached, emptyList(), liveFrom)
+
+    assertEquals(liveFrom, newCache.coveredFrom)
+  }
+
   // MARK: - mergeLifetimeStats
 
   @Test

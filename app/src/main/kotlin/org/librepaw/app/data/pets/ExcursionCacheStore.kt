@@ -26,7 +26,9 @@ class ExcursionCacheStore(context: Context) {
     prefs.edit().remove(key(petId, serverHost)).apply()
   }
 
-  private fun key(petId: Int, serverHost: String) = "$serverHost:$petId"
+  // v2: caches written before the coverage-gap fix in TraccarPetRepository.mergeExcursions may
+  // already be missing excursions for good, a new key rebuilds every one of them once.
+  private fun key(petId: Int, serverHost: String) = "v2:$serverHost:$petId"
 
   companion object {
     private const val PREFS_FILE_NAME = "librepaw_excursion_cache"

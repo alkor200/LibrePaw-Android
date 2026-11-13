@@ -26,7 +26,9 @@ class LifetimeStatsStore(context: Context) {
     prefs.edit().remove(key(petId, serverHost)).apply()
   }
 
-  private fun key(petId: Int, serverHost: String) = "$serverHost:$petId"
+  // v2: rebuilt together with the excursions cache (see its own key), totals folded from a
+  // gapped cache would stay short forever.
+  private fun key(petId: Int, serverHost: String) = "v2:$serverHost:$petId"
 
   companion object {
     private const val PREFS_FILE_NAME = "librepaw_lifetime_stats"

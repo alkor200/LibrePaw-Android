@@ -266,7 +266,19 @@ class TraccarPetRepository(
         }
       }
 
-      val coveredFrom = listOfNotNull(cached?.coveredFrom, liveFrom).minOrNull()
+      // Whichever is earlier, the cache's own prior coverage start or this call's liveFrom, but
+      // only while the two ranges actually connect: liveFrom no later than the cache's watermark
+      // (or its own coverage start). A request starting *after* the watermark (e.g. a 24-hour
+      // Trail window opened days after the cache was last updated) leaves a gap nothing ever
+      // fetched, so coverage restarts at liveFrom instead. Otherwise the advanced watermark would
+      // make every later, wider request skip that gap forever, lifetime stats included.
+      val previousCoveredFrom = cached?.coveredFrom
+      val coveredFrom =
+        if (previousCoveredFrom != null && liveFrom <= maxOf(previousCoveredFrom, cached.cachedThroughEndTime ?: previousCoveredFrom)) {
+          minOf(previousCoveredFrom, liveFrom)
+        } else {
+          liveFrom
+        }
 
       val closed = byId.values.filter { it.endTime != null }
       val newCache = CachedExcursions(excursions = closed, coveredFrom = coveredFrom, cachedThroughEndTime = watermark)
