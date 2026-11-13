@@ -267,7 +267,10 @@ class TraccarClient(private val credentials: TraccarCredentials) {
         if (!response.isSuccessful) throw statusError(response.code)
         try {
           json.parseToJsonElement(response.body.string()).jsonObject
-        } catch (e: SerializationException) {
+        } catch (e: IllegalArgumentException) {
+          // Both malformed JSON (SerializationException is one) and valid JSON that isn't an
+          // object, which `.jsonObject` reports as a plain IllegalArgumentException that no caller
+          // catches, crashing the app instead of failing the save.
           throw TraccarError.Decoding(e.message ?: "unknown decoding error")
         }
       }

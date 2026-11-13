@@ -105,6 +105,12 @@ class TraccarClientTest {
     assertEquals(1, server.requestCount - 3)
   }
 
+  @Test
+  fun renamingADevice_whoseResponseIsNotAJsonObject_failsAsDecoding_notACrash() = runTest {
+    server.enqueue(MockResponse(200, body = "[]"))
+    assertTrue(failureOf { client.updateDeviceName(1, "Rex") } is TraccarError.Decoding)
+  }
+
   private suspend fun failureOf(block: suspend () -> Unit): Throwable {
     try {
       block()

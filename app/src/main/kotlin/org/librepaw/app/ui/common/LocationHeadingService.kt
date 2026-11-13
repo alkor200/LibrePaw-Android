@@ -11,6 +11,7 @@ import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,12 +62,32 @@ class LocationHeadingService(private val context: Context) {
       override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
     }
 
+  /**
+   * Picks the best provider that exists, is enabled and is allowed with the permission actually
+   * granted. It used to fall back to the network provider unconditionally when GPS was off, and
+   * request GPS even with only approximate location granted: a device without a network provider
+   * (some emulators, de-Googled ROMs) threw IllegalArgumentException, and GPS with only coarse
+   * permission below Android 12 a SecurityException, both crashing the Find screen.
+   */
   @SuppressLint("MissingPermission")
   fun startUpdating() {
     if (!hasLocationPermission()) return
+    val hasFineLocation =
+      ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    // From Android 12 on, any provider works with approximate location, its fixes are coarsened.
+    val canUseGps = hasFineLocation || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val candidates = if (canUseGps) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER) else listOf(LocationManager.NETWORK_PROVIDER)
     val provider =
-      if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) LocationManager.GPS_PROVIDER else LocationManager.NETWORK_PROVIDER
-    locationManager.requestLocationUpdates(provider, 1_000L, 1f, locationListener)
+      candidates.firstOrNull { it in locationManager.allProviders && locationManager.isProviderEnabled(it) }
+    if (provider != null) {
+      try {
+        locationManager.requestLocationUpdates(provider, 1_000L, 1f, locationListener)
+      } catch (e: SecurityException) {
+        // Permission revoked between the check above and here.
+      } catch (e: IllegalArgumentException) {
+        // Provider vanished between the check above and here.
+      }
+    }
     rotationSensor?.let { sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_UI) }
   }
 
