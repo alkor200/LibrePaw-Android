@@ -16,7 +16,8 @@ import org.librepaw.app.ui.common.PetStatusPresentation
  * otherwise, both with a status-tinted ring.
  */
 object PetMarkerIconFactory {
-  private const val SIZE_PX = 128
+  /** Also how much room a marker needs around its position, see PetMapScreen's camera fitting. */
+  const val SIZE_PX = 128
   private const val STROKE_WIDTH_PX = 8f
 
   fun icon(pet: Pet, photo: Bitmap?, fallbackBackgroundColor: Int, pawColor: Int): Bitmap {

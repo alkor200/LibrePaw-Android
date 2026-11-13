@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,6 +39,7 @@ import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.ImageDecoding
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
+import org.librepaw.app.ui.home.BottomBarClearance
 import org.librepaw.app.ui.common.NavigationLauncher
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -148,6 +152,7 @@ private fun PetMarkersMap(
   val fallbackColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
   val pawColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
   val context = LocalContext.current
+  val cameraPadding = markerCameraPadding()
 
   LaunchedEffect(map) {
     val currentMap = map ?: return@LaunchedEffect
@@ -221,7 +226,7 @@ private fun PetMarkersMap(
         currentMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(focusPosition.latitude, focusPosition.longitude), 16.0))
         latestOnFocusConsumed()
       } else {
-        fitCamera(currentMap, pets)
+        fitCamera(currentMap, pets, cameraPadding)
       }
     }
   }
@@ -260,7 +265,31 @@ private suspend fun fetchPhotos(petRepository: PetRepository, pets: List<Pet>): 
       .toMap()
   }
 
-private fun fitCamera(map: MapLibreMap, pets: List<Pet>) {
+/** Pixels to keep clear on each side when fitting the camera to every pet, see [markerCameraPadding]. */
+private data class CameraPadding(val left: Int, val top: Int, val right: Int, val bottom: Int)
+
+/**
+ * Room for a whole marker (not just its center point) on every side, plus what the map shares
+ * with the status bar on top and the floating tab bar at the bottom. It used to be a flat 40/80
+ * pixels, less than half a 128px marker, so with two pets fitted edge to edge both markers were
+ * cut in half at the screen's edges.
+ */
+@Composable
+private fun markerCameraPadding(): CameraPadding {
+  val density = LocalDensity.current
+  val margin = with(density) { 24.dp.roundToPx() }
+  val markerHalf = PetMarkerIconFactory.SIZE_PX / 2
+  val statusBar = WindowInsets.statusBars.getTop(density)
+  val bottomBar = with(density) { BottomBarClearance.roundToPx() }
+  return CameraPadding(
+    left = markerHalf + margin,
+    top = statusBar + markerHalf + margin,
+    right = markerHalf + margin,
+    bottom = bottomBar + markerHalf + margin,
+  )
+}
+
+private fun fitCamera(map: MapLibreMap, pets: List<Pet>, padding: CameraPadding) {
   val positions = pets.mapNotNull { it.lastPosition }
   when {
     positions.isEmpty() -> return
@@ -271,7 +300,7 @@ private fun fitCamera(map: MapLibreMap, pets: List<Pet>) {
     else -> {
       val bounds =
         LatLngBounds.Builder().apply { positions.forEach { include(LatLng(it.latitude, it.longitude)) } }.build()
-      map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 40, 80, 40, 80))
+      map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding.left, padding.top, padding.right, padding.bottom))
     }
   }
 }
