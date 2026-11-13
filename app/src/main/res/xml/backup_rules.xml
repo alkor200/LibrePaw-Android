@@ -7,9 +7,11 @@
     <!--
    The stored Traccar session must never leave this device, matching the iOS
    app's kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly Keychain choice.
-   See EncryptedCredentialStore.PREFS_FILE_NAME.
+   See KeystoreCredentialStore.PREFS_FILE_NAME (and
+   LegacyEncryptedSession.PREFS_FILE_NAME, until it's migrated).
    -->
-    <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
+    <exclude domain="sharedpref" path="librepaw_session.xml"/>
+        <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
     <!--
    Cached excursions (start/end coordinates, i.e. where the pet lives) and
    lifetime totals are derived from one account's server data and cleared on

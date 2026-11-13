@@ -5,17 +5,20 @@
 
    The stored Traccar session must never leave this device, matching the iOS
    app's kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly Keychain choice.
-   See EncryptedCredentialStore.PREFS_FILE_NAME. Cached excursions and lifetime
+   See KeystoreCredentialStore.PREFS_FILE_NAME (and
+   LegacyEncryptedSession.PREFS_FILE_NAME, until it's migrated). Cached excursions and lifetime
    totals hold location data derived from one account's server data, see
    backup_rules.xml.
 -->
 <data-extraction-rules>
     <cloud-backup>
+        <exclude domain="sharedpref" path="librepaw_session.xml"/>
         <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
         <exclude domain="sharedpref" path="librepaw_excursion_cache.xml"/>
         <exclude domain="sharedpref" path="librepaw_lifetime_stats.xml"/>
     </cloud-backup>
     <device-transfer>
+        <exclude domain="sharedpref" path="librepaw_session.xml"/>
         <exclude domain="sharedpref" path="librepaw_secure_session.xml"/>
         <exclude domain="sharedpref" path="librepaw_excursion_cache.xml"/>
         <exclude domain="sharedpref" path="librepaw_lifetime_stats.xml"/>

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.librepaw.app.data.auth.AuthenticationService
+import org.librepaw.app.data.auth.CredentialStorageException
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.traccar.TraccarError
 
@@ -66,6 +67,8 @@ class LoginViewModel(private val authenticationService: AuthenticationService) :
       try {
         loggedInSession = authenticationService.logIn(serverUrl, email.trim(), password)
       } catch (e: TraccarError) {
+        errorMessage = e.message
+      } catch (e: CredentialStorageException) {
         errorMessage = e.message
       } finally {
         isLoggingIn = false
