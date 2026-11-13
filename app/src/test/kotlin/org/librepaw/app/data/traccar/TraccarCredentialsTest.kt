@@ -4,22 +4,26 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
+import org.librepaw.app.data.traccar.TraccarCredentials.Secret
 
 class TraccarCredentialsTest {
-  private val credentials =
-    TraccarCredentials(
-      serverUrl = "https://traccar.example.com/".toHttpUrl(),
-      email = "user@example.com",
-      password = "hunter2",
-    )
+  private val serverUrl = "https://traccar.example.com/".toHttpUrl()
 
   @Test
-  fun basicAuthHeaderValue_encodesEmailAndPassword() {
-    assertEquals("Basic dXNlckBleGFtcGxlLmNvbTpodW50ZXIy", credentials.basicAuthHeaderValue)
+  fun authorizationHeaderValue_password_isBasicAuthOfEmailAndPassword() {
+    val credentials = TraccarCredentials(serverUrl, "user@example.com", Secret.Password("hunter2"))
+    assertEquals("Basic dXNlckBleGFtcGxlLmNvbTpodW50ZXIy", credentials.authorizationHeaderValue)
   }
 
   @Test
-  fun toString_neverContainsThePassword() {
-    assertFalse(credentials.toString().contains("hunter2"))
+  fun authorizationHeaderValue_token_isBearer() {
+    val credentials = TraccarCredentials(serverUrl, "user@example.com", Secret.Token("abc123"))
+    assertEquals("Bearer abc123", credentials.authorizationHeaderValue)
+  }
+
+  @Test
+  fun toString_neverContainsTheSecret() {
+    assertFalse(TraccarCredentials(serverUrl, "user@example.com", Secret.Password("hunter2")).toString().contains("hunter2"))
+    assertFalse(TraccarCredentials(serverUrl, "user@example.com", Secret.Token("abc123")).toString().contains("abc123"))
   }
 }

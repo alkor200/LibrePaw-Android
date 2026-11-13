@@ -46,4 +46,7 @@ interface PetRepository {
 
   /** Shares the pet with another Traccar user, found by email. Throws if no such user exists. */
   suspend fun sharePet(petId: Int, email: String)
+
+  /** Best-effort, never throws: ends any server-side session this repository opened, on logout. */
+  suspend fun endSession() {}
 }

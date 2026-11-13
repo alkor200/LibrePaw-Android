@@ -554,6 +554,14 @@ class TraccarPetRepository(
     }
   }
 
+  override suspend fun endSession() {
+    try {
+      client.endSession()
+    } catch (e: TraccarError) {
+      // Best-effort: it times out on its own.
+    }
+  }
+
   // MARK: - Pet sharing (see ADR-0018 on the iOS side)
 
   override suspend fun sharePet(petId: Int, email: String) {

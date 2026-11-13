@@ -3,9 +3,11 @@ package org.librepaw.app
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -17,6 +19,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import kotlinx.coroutines.launch
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.settings.AppearancePreferences
@@ -41,6 +44,9 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
   val petRepository = currentSession?.let { session -> remember(session) { authenticationService.makePetRepository(session) } }
   var petDataVersion by remember { mutableStateOf(0) }
   val viewModelStoreOwner = LocalViewModelStoreOwner.current
+
+  val coroutineScope = rememberCoroutineScope()
+  LaunchedEffect(currentSession) { currentSession?.let { authenticationService.renewStoredSession(it) } }
 
   var selectedTab by rememberSaveable { mutableStateOf(HomeTab.Map) }
   // A one-shot signal for "View on Map": set alongside switching to the Map tab, consumed (and
@@ -107,6 +113,12 @@ fun MainNavigation(authenticationService: AuthenticationService, appearancePrefe
                   authenticationService.logOut()
                   switchSession(null)
                   goTo(Login)
+                  // After the local logout, never holding it up: both are best-effort and only
+                  // tidy up the server side (the token and cookie session expire on their own).
+                  coroutineScope.launch {
+                    repository.endSession()
+                    authenticationService.revokeSession(session)
+                  }
                 },
                 dataVersion = petDataVersion,
                 focusPetId = mapFocusPetId,

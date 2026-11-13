@@ -63,7 +63,7 @@ class LoginViewModelTest {
 
   @Test
   fun logIn_onSuccess_setsLoggedInSession() = runTest {
-    val session = StoredSession("https://traccar.example.com/", "user@example.com", "hunter2")
+    val session = StoredSession("https://traccar.example.com/", "user@example.com", token = "abc123")
     val viewModel = LoginViewModel(FakeAuthenticationService(result = Result.success(session)))
     viewModel.updateServerUrl("traccar.example.com")
     viewModel.updateEmail("user@example.com")
@@ -94,7 +94,7 @@ class LoginViewModelTest {
   }
 }
 
-private class FakeAuthenticationService(private val result: Result<StoredSession> = Result.success(StoredSession("", "", ""))) :
+private class FakeAuthenticationService(private val result: Result<StoredSession> = Result.success(StoredSession("", ""))) :
   AuthenticationService {
   override fun restoreSession(): StoredSession? = null
 
@@ -102,6 +102,10 @@ private class FakeAuthenticationService(private val result: Result<StoredSession
     result.getOrThrow()
 
   override fun logOut() {}
+
+  override suspend fun revokeSession(session: StoredSession) {}
+
+  override suspend fun renewStoredSession(session: StoredSession) {}
 
   override fun makePetRepository(session: StoredSession): org.librepaw.app.data.pets.PetRepository =
     throw UnsupportedOperationException("not used by this test")

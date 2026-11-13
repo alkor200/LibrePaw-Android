@@ -16,7 +16,7 @@ class LiveAuthenticationServiceTest {
     excursionCacheStore.save(CachedExcursions(emptyList(), coveredFrom = 0L, cachedThroughEndTime = 1L), petId = 1, serverHost = "a.example")
     excursionCacheStore.save(CachedExcursions(emptyList(), coveredFrom = 0L, cachedThroughEndTime = 1L), petId = 2, serverHost = "b.example")
     lifetimeStatsStore.save(CachedLifetimeStats(10.0, 10L, 1L), petId = 1, serverHost = "a.example")
-    val credentialStore = FakeCredentialStore(StoredSession("https://a.example", "a@example.org", "secret"))
+    val credentialStore = FakeCredentialStore(StoredSession("https://a.example", "a@example.org", token = "secret"))
 
     LiveAuthenticationService(credentialStore, excursionCacheStore, lifetimeStatsStore).logOut()
 

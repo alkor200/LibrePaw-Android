@@ -20,9 +20,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
 /**
- * A minimal Traccar REST client, authenticated via HTTP Basic Auth for ordinary JSON endpoints.
+ * A minimal Traccar REST client, authenticated via a Bearer token (or, for a server that can't
+ * issue tokens, HTTP Basic Auth) for ordinary JSON endpoints, see [TraccarCredentials].
  *
- * A handful of endpoints (the current-session user, media/photo fetches) ignore Basic Auth and
+ * A handful of endpoints (the current-session user, media/photo fetches) ignore that header and
  * need a cookie-backed session instead, established lazily on first use (see
  * [ensureCookieSession]) and reused by OkHttp's own in-memory cookie jar for the rest of this
  * client's lifetime, mirroring the iOS client's own lazy `ensureCookieSession()`.
@@ -53,7 +54,7 @@ class TraccarClient(private val credentials: TraccarCredentials) {
       .cookieJar(cookieJar)
       .addInterceptor { chain ->
         val request =
-          chain.request().newBuilder().header("Authorization", credentials.basicAuthHeaderValue).build()
+          chain.request().newBuilder().header("Authorization", credentials.authorizationHeaderValue).build()
         chain.proceed(request)
       }
       .build()
@@ -127,6 +128,36 @@ class TraccarClient(private val credentials: TraccarCredentials) {
         .addQueryParameter("type", type)
         .build()
     return getJson(url)
+  }
+
+  /**
+   * Issues a new API token for the signed-in account, valid until [expiresAtEpochMillis]. Traccar
+   * returns the token itself as the plain response body.
+   */
+  suspend fun createToken(expiresAtEpochMillis: Long): String {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/session/token").build()
+    val body = FormBody.Builder().add("expiration", TraccarDates.queryParam(expiresAtEpochMillis)).build()
+    return withResponse(Request.Builder().url(url).post(body).build()) { response ->
+      if (!response.isSuccessful) throw statusError(response.code)
+      response.body.string().trim()
+    }
+  }
+
+  /** Invalidates [token] on the server, so it stops working even before it expires. */
+  suspend fun revokeToken(token: String) {
+    val url = credentials.serverUrl.newBuilder().addPathSegments("api/session/token/revoke").build()
+    executeVoid(Request.Builder().url(url).post(FormBody.Builder().add("token", token).build()).build())
+  }
+
+  /**
+   * Ends the cookie session on the server (`DELETE /api/session`), if one was ever established,
+   * rather than leaving it valid until it times out. The cookie itself only lives in this client's
+   * in-memory jar anyway.
+   */
+  suspend fun endSession() {
+    if (!hasCookieSession) return
+    hasCookieSession = false
+    executeVoid(Request.Builder().url(credentials.serverUrl.newBuilder().addPathSegments("api/session").build()).delete().build())
   }
 
   /** Every user on the server; admin-only (used to look up a user by email for pet sharing). */
@@ -220,12 +251,23 @@ class TraccarClient(private val credentials: TraccarCredentials) {
     return JsonObject(fields)
   }
 
-  /** `POST /api/session` with form-urlencoded credentials; Traccar sets the session cookie via `Set-Cookie`. */
+  /**
+   * `GET /api/session?token=...` with a token (a Bearer header alone doesn't establish one), or
+   * `POST /api/session` with form-urlencoded credentials with a password. Either way Traccar sets
+   * the session cookie via `Set-Cookie`.
+   */
   private suspend fun ensureCookieSession() {
     if (hasCookieSession) return
-    val url = credentials.serverUrl.newBuilder().addPathSegments("api/session").build()
-    val body = FormBody.Builder().add("email", credentials.email).add("password", credentials.password).build()
-    withResponse(Request.Builder().url(url).post(body).build()) { response ->
+    val sessionUrl = credentials.serverUrl.newBuilder().addPathSegments("api/session")
+    val request =
+      when (val secret = credentials.secret) {
+        is TraccarCredentials.Secret.Token -> Request.Builder().url(sessionUrl.addQueryParameter("token", secret.value).build()).get()
+        is TraccarCredentials.Secret.Password ->
+          Request.Builder()
+            .url(sessionUrl.build())
+            .post(FormBody.Builder().add("email", credentials.email).add("password", secret.value).build())
+      }
+    withResponse(request.build()) { response ->
       if (!response.isSuccessful) throw statusError(response.code)
       hasCookieSession = true
     }
