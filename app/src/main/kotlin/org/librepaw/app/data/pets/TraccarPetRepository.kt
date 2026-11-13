@@ -20,6 +20,7 @@ class TraccarPetRepository(
   private val client: TraccarClient,
   private val excursionCacheStore: ExcursionCacheStore,
   private val lifetimeStatsStore: LifetimeStatsStore,
+  private val photoCache: PhotoCache = PhotoCache(),
 ) : PetRepository {
   override suspend fun fetchPets(): List<Pet> =
     coroutineScope {
@@ -33,7 +34,8 @@ class TraccarPetRepository(
 
   override suspend fun fetchPhoto(pet: Pet): ByteArray? {
     val photoUrl = pet.photoUrl ?: return null
-    return client.fetchData(photoUrl)
+    photoCache.get(pet.id, photoUrl)?.let { return it }
+    return client.fetchData(photoUrl).also { photoCache.put(pet.id, photoUrl, it) }
   }
 
   override suspend fun currentUserPermissions(): AccountPermissions {
@@ -52,6 +54,8 @@ class TraccarPetRepository(
 
   override suspend fun setPhoto(petId: Int, jpegData: ByteArray) {
     client.updateDeviceImage(petId, jpegData, "image/jpeg")
+    // Same URL as the old photo (Traccar reuses the filename), see PhotoCache.
+    photoCache.remove(petId)
   }
 
   override suspend fun fetchTrail(petId: Int, fromEpochMillis: Long, toEpochMillis: Long): List<PetPosition> {
