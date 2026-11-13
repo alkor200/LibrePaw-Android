@@ -60,3 +60,7 @@ android emulator start medium_phone   # the AVD created for this project
 android run app --device=emulator-5554
 android screen capture -o screenshot.png
 ```
+
+## License
+
+LibrePaw is available under the [GNU General Public License v3.0](LICENSE), the same as the iOS app: you're free to use, modify, and distribute it, including forks, but any distributed derivative work must stay open source under the same license.
