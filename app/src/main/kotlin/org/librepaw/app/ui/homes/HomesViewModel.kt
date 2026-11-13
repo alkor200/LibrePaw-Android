@@ -12,13 +12,15 @@ import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.HomeGeofence
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 sealed interface HomesUiState {
   object Loading : HomesUiState
 
   data class Loaded(val homes: List<HomeGeofence>, val permissions: AccountPermissions?) : HomesUiState
 
-  data class Failed(val message: String) : HomesUiState
+  data class Failed(val message: UiText) : HomesUiState
 }
 
 class HomesViewModel(private val petId: Int, private val petRepository: PetRepository) : ViewModel() {
@@ -40,7 +42,7 @@ class HomesViewModel(private val petId: Int, private val petRepository: PetRepos
             HomesUiState.Loaded(homesDeferred.await(), permissions)
           }
         } catch (e: TraccarError) {
-          HomesUiState.Failed(e.message ?: "Something went wrong.")
+          HomesUiState.Failed(e.toUiText())
         }
     }
   }

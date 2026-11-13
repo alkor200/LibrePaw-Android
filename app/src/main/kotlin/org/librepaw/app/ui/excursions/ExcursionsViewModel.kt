@@ -12,13 +12,15 @@ import kotlinx.coroutines.launch
 import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 sealed interface ExcursionsUiState {
   object Loading : ExcursionsUiState
 
   data class Loaded(val excursions: List<Excursion>, val homeNamesById: Map<Int, String>) : ExcursionsUiState
 
-  data class Failed(val message: String) : ExcursionsUiState
+  data class Failed(val message: UiText) : ExcursionsUiState
 }
 
 /**
@@ -52,7 +54,7 @@ class ExcursionsViewModel(
             ExcursionsUiState.Loaded(excursions, homeNamesById)
           }
         } catch (e: TraccarError) {
-          ExcursionsUiState.Failed(e.message ?: "Something went wrong.")
+          ExcursionsUiState.Failed(e.toUiText())
         }
     }
   }

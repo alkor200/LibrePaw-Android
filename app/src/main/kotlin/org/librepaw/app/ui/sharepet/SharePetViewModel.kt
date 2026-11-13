@@ -6,8 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 /** Grants another Traccar account access to this pet, by email, admin-only server-side (see
  * ADR-0018 on the iOS side). */
@@ -19,7 +22,7 @@ class SharePetViewModel(private val petId: Int, private val petName: String, pri
   var isSharing by mutableStateOf(false)
     private set
 
-  var errorMessage by mutableStateOf<String?>(null)
+  var errorMessage by mutableStateOf<UiText?>(null)
     private set
 
   fun updateEmail(value: String) {
@@ -29,7 +32,7 @@ class SharePetViewModel(private val petId: Int, private val petName: String, pri
   fun share(onSuccess: () -> Unit) {
     val trimmedEmail = email.trim()
     if (trimmedEmail.isEmpty()) {
-      errorMessage = "Enter the email address of the Traccar account to share $petName with."
+      errorMessage = UiText(R.string.share_pet_email_missing, petName)
       return
     }
 
@@ -42,7 +45,7 @@ class SharePetViewModel(private val petId: Int, private val petName: String, pri
         onSuccess()
       } catch (e: TraccarError) {
         isSharing = false
-        errorMessage = e.message ?: "Something went wrong."
+        errorMessage = e.toUiText()
       }
     }
   }

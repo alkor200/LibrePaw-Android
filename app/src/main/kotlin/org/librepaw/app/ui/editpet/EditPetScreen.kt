@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -61,8 +62,10 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.ImageDecoding
+import org.librepaw.app.ui.common.asString
 import org.librepaw.app.ui.home.BottomBarClearance
 
 private val CROP_DIAMETER = 220.dp
@@ -106,9 +109,9 @@ fun EditPetScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Edit Pet") },
+        title = { Text(stringResource(R.string.edit_pet_title)) },
         navigationIcon = {
-          IconButton(onClick = onCancel) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel") }
+          IconButton(onClick = onCancel) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_cancel)) }
         },
         actions = {
           val canSave = viewModel.hasChanges() && !viewModel.isSaving && viewModel.name.isNotBlank()
@@ -125,7 +128,7 @@ fun EditPetScreen(
               )
             },
           ) {
-            Text("Save")
+            Text(stringResource(R.string.action_save))
           }
         },
         colors =
@@ -146,9 +149,9 @@ fun EditPetScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
           ) {
-            Text("Couldn't Load Pet", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.error_couldnt_load_pet), style = MaterialTheme.typography.titleLarge)
             Text(
-              state.message,
+              state.message.asString(),
               modifier = Modifier.padding(top = 8.dp),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -179,19 +182,19 @@ fun EditPetScreen(
               },
               modifier = Modifier.padding(top = 16.dp),
             ) {
-              Text(if (displayedBitmap != null) "Choose a Different Photo" else "Choose a Photo")
+              Text(stringResource(if (displayedBitmap != null) R.string.edit_pet_choose_different_photo else R.string.edit_pet_choose_photo))
             }
 
             OutlinedTextField(
               value = viewModel.name,
               onValueChange = viewModel::updateName,
-              label = { Text("Name") },
+              label = { Text(stringResource(R.string.edit_pet_name)) },
               singleLine = true,
               keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
               modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             )
 
-            viewModel.errorMessage?.let { message ->
+            viewModel.errorMessage?.asString()?.let { message ->
               Text(
                 message,
                 modifier = Modifier.padding(top = 16.dp),

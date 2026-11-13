@@ -9,13 +9,15 @@ import kotlinx.coroutines.launch
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 sealed interface PetListUiState {
   object Loading : PetListUiState
 
   data class Loaded(val pets: List<Pet>) : PetListUiState
 
-  data class Failed(val message: String) : PetListUiState
+  data class Failed(val message: UiText) : PetListUiState
 }
 
 class PetListViewModel(private val petRepository: PetRepository) : ViewModel() {
@@ -35,7 +37,7 @@ class PetListViewModel(private val petRepository: PetRepository) : ViewModel() {
             petRepository.fetchPets().sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
           )
         } catch (e: TraccarError) {
-          PetListUiState.Failed(e.message ?: "Something went wrong.")
+          PetListUiState.Failed(e.toUiText())
         }
     }
   }

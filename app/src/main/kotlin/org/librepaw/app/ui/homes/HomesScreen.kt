@@ -34,12 +34,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.HomeGeofence
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.common.asString
 import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,9 +65,9 @@ fun HomesScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("$petName's Homes") },
+        title = { Text(stringResource(R.string.homes_title, petName)) },
         navigationIcon = {
-          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
@@ -76,7 +79,7 @@ fun HomesScreen(
     floatingActionButton = {
       if (canManageHomes) {
         FloatingActionButton(onClick = onAddHome, modifier = Modifier.padding(bottom = BottomBarClearance)) {
-          Icon(Icons.Filled.Add, contentDescription = "Add Home")
+          Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.homes_add))
         }
       }
     },
@@ -91,14 +94,14 @@ fun HomesScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
           ) {
-            Text("Couldn't Load Homes", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.homes_couldnt_load), style = MaterialTheme.typography.titleLarge)
             Text(
-              state.message,
+              state.message.asString(),
               modifier = Modifier.padding(top = 8.dp),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text("Try Again") }
+            Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text(stringResource(R.string.action_try_again)) }
           }
         is HomesUiState.Loaded ->
           HomesList(
@@ -129,15 +132,15 @@ private fun HomesList(
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {
-      Text("No Homes Yet", style = MaterialTheme.typography.titleLarge)
+      Text(stringResource(R.string.homes_empty_title), style = MaterialTheme.typography.titleLarge)
       Text(
-        "A home is the area your pet is expected to be in; leaving and returning starts and ends an excursion.",
+        stringResource(R.string.homes_empty_description),
         modifier = Modifier.padding(top = 8.dp),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       if (canManageHomes) {
-        Button(onClick = onAddHome, modifier = Modifier.padding(top = 24.dp)) { Text("Add Home") }
+        Button(onClick = onAddHome, modifier = Modifier.padding(top = 24.dp)) { Text(stringResource(R.string.homes_add)) }
       }
     }
     return
@@ -158,9 +161,9 @@ private fun VisibilityNotice(permissions: AccountPermissions?) {
   if (permissions == null) return
   val message =
     when {
-      permissions.isAdministrator -> "As an administrator, you can see and manage every home set up for this pet."
-      permissions.canManageHomes -> "You can see and manage homes you or others on this server have set up for this pet."
-      else -> "You can see this pet's homes, but don't have permission to add, edit, or remove them."
+      permissions.isAdministrator -> stringResource(R.string.homes_notice_admin)
+      permissions.canManageHomes -> stringResource(R.string.homes_notice_manage)
+      else -> stringResource(R.string.homes_notice_read_only)
     }
   Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
     Text(
@@ -183,14 +186,14 @@ private fun HomeRow(home: HomeGeofence, canManage: Boolean, onClick: () -> Unit,
     Column(modifier = Modifier.weight(1f)) {
       Text(home.name, style = MaterialTheme.typography.bodyLarge)
       Text(
-        "${home.radiusMeters.toInt()} m radius",
+        stringResource(R.string.homes_radius_short, home.radiusMeters.toInt()),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
     if (canManage) {
       IconButton(onClick = onDelete) {
-        Icon(Icons.Filled.Delete, contentDescription = "Delete ${home.name}", tint = MaterialTheme.colorScheme.error)
+        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.homes_delete_named, home.name), tint = MaterialTheme.colorScheme.error)
       }
     }
   }

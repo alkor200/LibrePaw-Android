@@ -38,17 +38,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetPosition
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
+import org.librepaw.app.ui.common.asString
+import org.librepaw.app.ui.common.rememberFormatting
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -81,9 +82,9 @@ fun ExcursionDetailScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text(dateOnlyText(excursion.startTime)) },
+        title = { Text(rememberFormatting().date(excursion.startTime)) },
         navigationIcon = {
-          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
@@ -95,7 +96,7 @@ fun ExcursionDetailScreen(
   ) { innerPadding ->
     Column(modifier = Modifier.padding(innerPadding).fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
       if (excursion.isLikelyVehicleTrip) {
-        InfoBanner(Icons.Filled.DirectionsCar, "This looks like a car or train ride, it isn't counted in your totals.")
+        InfoBanner(Icons.Filled.DirectionsCar, stringResource(R.string.excursion_vehicle_notice))
       }
       viewModel.routeText?.let { InfoBanner(Icons.Filled.SwapHoriz, it) }
       StatGrid(excursion)
@@ -121,16 +122,24 @@ private fun InfoBanner(icon: ImageVector, text: String) {
 
 @Composable
 private fun StatGrid(excursion: Excursion) {
+  val format = rememberFormatting()
+  val started = stringResource(R.string.excursion_started)
+  val status = stringResource(R.string.excursion_status)
+  val awayNow = stringResource(R.string.excursions_away_now)
+  val ended = stringResource(R.string.excursion_ended)
+  val distance = stringResource(R.string.excursion_distance)
+  val duration = stringResource(R.string.excursion_duration)
+  val avgSpeed = stringResource(R.string.excursion_avg_speed)
   val tiles = buildList {
-    add(Triple(Icons.Filled.Flag, "Started", timeText(excursion.startTime)))
+    add(Triple(Icons.Filled.Flag, started, format.time(excursion.startTime)))
     if (excursion.isOngoing) {
-      add(Triple(Icons.Filled.Pets, "Status", "Away now"))
+      add(Triple(Icons.Filled.Pets, status, awayNow))
     } else {
-      excursion.endTime?.let { add(Triple(Icons.Filled.FlagCircle, "Ended", timeText(it))) }
+      excursion.endTime?.let { add(Triple(Icons.Filled.FlagCircle, ended, format.time(it))) }
     }
-    excursion.distanceMeters?.let { add(Triple(Icons.Filled.Map, "Distance", distanceText(it))) }
-    excursion.durationMillis?.let { add(Triple(Icons.Filled.Schedule, "Duration", durationText(it))) }
-    excursion.averageSpeedKmh?.let { add(Triple(Icons.Filled.Speed, "Avg. Speed", "%.1f km/h".format(it))) }
+    excursion.distanceMeters?.let { add(Triple(Icons.Filled.Map, distance, format.distance(it))) }
+    excursion.durationMillis?.let { add(Triple(Icons.Filled.Schedule, duration, format.duration(it))) }
+    excursion.averageSpeedKmh?.let { add(Triple(Icons.Filled.Speed, avgSpeed, format.speed(it))) }
   }
 
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -191,7 +200,7 @@ private fun MapCard(viewModel: ExcursionDetailViewModel, modifier: Modifier = Mo
             color = MaterialTheme.colorScheme.errorContainer,
           ) {
             Text(
-              viewModel.errorMessage.orEmpty(),
+              viewModel.errorMessage?.asString().orEmpty(),
               modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
               color = MaterialTheme.colorScheme.onErrorContainer,
             )
@@ -203,7 +212,7 @@ private fun MapCard(viewModel: ExcursionDetailViewModel, modifier: Modifier = Mo
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
           ) {
             Text(
-              "No route recorded for this excursion.",
+              stringResource(R.string.excursion_no_route),
               modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
               style = MaterialTheme.typography.bodySmall,
             )
@@ -247,6 +256,4 @@ private fun fitCameraToTrail(map: MapLibreMap, trail: List<PetPosition>) {
   map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 60, 60, 60, 60))
 }
 
-private fun dateOnlyText(epochMillis: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(epochMillis))
 
-private fun timeText(epochMillis: Long): String = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(epochMillis))

@@ -33,14 +33,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
+import org.librepaw.app.ui.common.asString
 import org.librepaw.app.ui.home.BottomBarClearance
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -69,8 +72,9 @@ fun SetHomeScreen(
   onDeleted: () -> Unit,
   onCancel: () -> Unit,
   modifier: Modifier = Modifier,
+  defaultHomeName: String = stringResource(R.string.set_home_default_name),
   viewModel: SetHomeViewModel =
-    viewModel(key = "set-home-$petId-${homeId ?: "new"}") { SetHomeViewModel(petId, homeId, petRepository) },
+    viewModel(key = "set-home-$petId-${homeId ?: "new"}") { SetHomeViewModel(petId, homeId, petRepository, defaultHomeName) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -79,14 +83,14 @@ fun SetHomeScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text(if (viewModel.isNew) "Add Home" else "Edit Home") },
+        title = { Text(stringResource(if (viewModel.isNew) R.string.set_home_add else R.string.set_home_edit)) },
         navigationIcon = {
-          IconButton(onClick = onCancel) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel") }
+          IconButton(onClick = onCancel) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_cancel)) }
         },
         actions = {
           if (!viewModel.isNew && viewModel.permissions?.canManageHomes == true) {
             IconButton(onClick = { showDeleteConfirmation = true }) {
-              Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+              Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.error)
             }
           }
         },
@@ -104,7 +108,7 @@ fun SetHomeScreen(
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         is SetHomeUiState.Failed ->
           Column(modifier = Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(state.message, style = MaterialTheme.typography.bodyMedium)
+            Text(state.message.asString(), style = MaterialTheme.typography.bodyMedium)
           }
         SetHomeUiState.Ready -> SetHomeContent(viewModel = viewModel, onSaved = onSaved)
       }
@@ -114,8 +118,8 @@ fun SetHomeScreen(
   if (showDeleteConfirmation) {
     AlertDialog(
       onDismissRequest = { showDeleteConfirmation = false },
-      title = { Text("Delete this home?") },
-      text = { Text("Excursions already recorded against it aren't affected.") },
+      title = { Text(stringResource(R.string.set_home_delete_confirmation)) },
+      text = { Text(stringResource(R.string.set_home_delete_explanation)) },
       confirmButton = {
         TextButton(
           onClick = {
@@ -123,10 +127,10 @@ fun SetHomeScreen(
             viewModel.delete(onSuccess = onDeleted)
           }
         ) {
-          Text("Delete")
+          Text(stringResource(R.string.action_delete))
         }
       },
-      dismissButton = { TextButton(onClick = { showDeleteConfirmation = false }) { Text("Cancel") } },
+      dismissButton = { TextButton(onClick = { showDeleteConfirmation = false }) { Text(stringResource(R.string.action_cancel)) } },
     )
   }
 }
@@ -180,18 +184,18 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
           OutlinedTextField(
             value = viewModel.name,
             onValueChange = viewModel::updateName,
-            label = { Text("Name") },
+            label = { Text(stringResource(R.string.set_home_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
           )
           Text(
-            "Pan the map so the pin sits where your pet's home should be.",
+            stringResource(R.string.set_home_pan_hint),
             modifier = Modifier.padding(top = 8.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
-            "${viewModel.radiusMeters.toInt()} meters radius",
+            stringResource(R.string.set_home_radius, viewModel.radiusMeters.toInt()),
             modifier = Modifier.padding(top = 16.dp),
             style = MaterialTheme.typography.labelLarge,
           )
@@ -202,7 +206,7 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
             steps = ((MAX_RADIUS_METERS - MIN_RADIUS_METERS) / RADIUS_STEP_METERS).toInt() - 1,
           )
 
-          viewModel.errorMessage?.let { message ->
+          viewModel.errorMessage?.asString()?.let { message ->
             Text(
               message,
               modifier = Modifier.padding(top = 8.dp),
@@ -219,19 +223,19 @@ private fun SetHomeContent(viewModel: SetHomeViewModel, onSaved: () -> Unit) {
             if (viewModel.isSaving) {
               CircularProgressIndicator(modifier = Modifier.padding(2.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-              Text(if (viewModel.isNew) "Add Home" else "Save")
+              Text(stringResource(if (viewModel.isNew) R.string.set_home_add else R.string.action_save))
             }
           }
         } else {
           Text(viewModel.name, style = MaterialTheme.typography.titleMedium)
           Text(
-            "${viewModel.radiusMeters.toInt()} meters radius",
+            stringResource(R.string.set_home_radius, viewModel.radiusMeters.toInt()),
             modifier = Modifier.padding(top = 4.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
           Text(
-            "You don't have permission to edit this home.",
+            stringResource(R.string.set_home_no_permission),
             modifier = Modifier.padding(top = 12.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

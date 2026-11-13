@@ -20,7 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.librepaw.app.R
 
 /**
  * How much bottom clearance a screen's own scrollable content needs to reserve so its last item
@@ -53,21 +55,21 @@ fun AppBottomBar(selectedTab: HomeTab, onTabSelected: (HomeTab) -> Unit, modifie
     ) {
       TabItem(
         icon = Icons.Filled.Place,
-        label = "Map",
+        label = stringResource(R.string.tab_map),
         selected = selectedTab == HomeTab.Map,
         onClick = { onTabSelected(HomeTab.Map) },
         modifier = Modifier.weight(1f),
       )
       TabItem(
         icon = Icons.Filled.Pets,
-        label = "Pets",
+        label = stringResource(R.string.tab_pets),
         selected = selectedTab == HomeTab.Pets,
         onClick = { onTabSelected(HomeTab.Pets) },
         modifier = Modifier.weight(1f),
       )
       TabItem(
         icon = Icons.Filled.Settings,
-        label = "Settings",
+        label = stringResource(R.string.tab_settings),
         selected = selectedTab == HomeTab.Settings,
         onClick = { onTabSelected(HomeTab.Settings) },
         modifier = Modifier.weight(1f),

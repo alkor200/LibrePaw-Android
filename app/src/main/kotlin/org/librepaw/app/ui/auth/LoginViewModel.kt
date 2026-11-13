@@ -7,10 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import org.librepaw.app.R
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.CredentialStorageException
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 class LoginViewModel(private val authenticationService: AuthenticationService) : ViewModel() {
   var serverUrlString by mutableStateOf("")
@@ -25,7 +28,7 @@ class LoginViewModel(private val authenticationService: AuthenticationService) :
   var isLoggingIn by mutableStateOf(false)
     private set
 
-  var errorMessage by mutableStateOf<String?>(null)
+  var errorMessage by mutableStateOf<UiText?>(null)
     private set
 
   var loggedInSession by mutableStateOf<StoredSession?>(null)
@@ -58,7 +61,7 @@ class LoginViewModel(private val authenticationService: AuthenticationService) :
 
     val serverUrl = normalizedServerUrl()
     if (serverUrl == null) {
-      errorMessage = "The server address is not a valid URL."
+      errorMessage = UiText(R.string.error_invalid_server_url)
       return
     }
 
@@ -67,9 +70,9 @@ class LoginViewModel(private val authenticationService: AuthenticationService) :
       try {
         loggedInSession = authenticationService.logIn(serverUrl, email.trim(), password)
       } catch (e: TraccarError) {
-        errorMessage = e.message
+        errorMessage = e.toUiText()
       } catch (e: CredentialStorageException) {
-        errorMessage = e.message
+        errorMessage = e.toUiText()
       } finally {
         isLoggingIn = false
       }

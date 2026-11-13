@@ -12,6 +12,8 @@ import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetPosition
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 class ExcursionDetailViewModel(val excursion: Excursion, private val petId: Int, private val petRepository: PetRepository) :
   ViewModel() {
@@ -21,7 +23,7 @@ class ExcursionDetailViewModel(val excursion: Excursion, private val petId: Int,
   var isLoading by mutableStateOf(true)
     private set
 
-  var errorMessage by mutableStateOf<String?>(null)
+  var errorMessage by mutableStateOf<UiText?>(null)
     private set
 
   private var homeNamesById: Map<Int, String> by mutableStateOf(emptyMap())
@@ -44,7 +46,7 @@ class ExcursionDetailViewModel(val excursion: Excursion, private val petId: Int,
           homeNamesById = homesDeferred.await().associate { it.id to it.name }
         }
       } catch (e: TraccarError) {
-        errorMessage = e.message ?: "Something went wrong."
+        errorMessage = e.toUiText()
       } finally {
         isLoading = false
       }

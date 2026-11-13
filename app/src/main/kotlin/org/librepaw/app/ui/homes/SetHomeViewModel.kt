@@ -11,10 +11,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 private const val DEFAULT_RADIUS_METERS = 50.0
 
@@ -23,11 +26,16 @@ sealed interface SetHomeUiState {
 
   object Ready : SetHomeUiState
 
-  data class Failed(val message: String) : SetHomeUiState
+  data class Failed(val message: UiText) : SetHomeUiState
 }
 
-class SetHomeViewModel(private val petId: Int, private val homeId: Int?, private val petRepository: PetRepository) :
-  ViewModel() {
+/** [defaultName] is what a new home starts out named, in the app's language ("Home", "Zuhause"). */
+class SetHomeViewModel(
+  private val petId: Int,
+  private val homeId: Int?,
+  private val petRepository: PetRepository,
+  private val defaultName: String,
+) : ViewModel() {
   private val _uiState = MutableStateFlow<SetHomeUiState>(SetHomeUiState.Loading)
   val uiState: StateFlow<SetHomeUiState> = _uiState.asStateFlow()
 
@@ -45,7 +53,7 @@ class SetHomeViewModel(private val petId: Int, private val homeId: Int?, private
   var isSaving by mutableStateOf(false)
     private set
 
-  var errorMessage by mutableStateOf<String?>(null)
+  var errorMessage by mutableStateOf<UiText?>(null)
     private set
 
   var permissions: AccountPermissions? by mutableStateOf(null)
@@ -65,7 +73,7 @@ class SetHomeViewModel(private val petId: Int, private val homeId: Int?, private
               val home = petRepository.homeGeofences(petId).firstOrNull { it.id == homeId }
               permissions = permissionsDeferred.await()
               if (home == null) {
-                SetHomeUiState.Failed("This home could not be found.")
+                SetHomeUiState.Failed(UiText(R.string.set_home_not_found))
               } else {
                 name = home.name
                 center = home.center
@@ -77,12 +85,12 @@ class SetHomeViewModel(private val petId: Int, private val homeId: Int?, private
               permissions = permissionsDeferred.await()
               val position = pet?.lastPosition
               if (position != null) center = Coordinate(position.latitude, position.longitude)
-              name = "Home"
+              name = defaultName
               SetHomeUiState.Ready
             }
           }
         } catch (e: TraccarError) {
-          SetHomeUiState.Failed(e.message ?: "Something went wrong.")
+          SetHomeUiState.Failed(e.toUiText())
         }
     }
   }
@@ -115,7 +123,7 @@ class SetHomeViewModel(private val petId: Int, private val homeId: Int?, private
         onSuccess()
       } catch (e: TraccarError) {
         isSaving = false
-        errorMessage = e.message ?: "Something went wrong."
+        errorMessage = e.toUiText()
       }
     }
   }
@@ -131,7 +139,7 @@ class SetHomeViewModel(private val petId: Int, private val homeId: Int?, private
         onSuccess()
       } catch (e: TraccarError) {
         isSaving = false
-        errorMessage = e.message ?: "Something went wrong."
+        errorMessage = e.toUiText()
       }
     }
   }

@@ -1,6 +1,5 @@
 package org.librepaw.app.ui.petlist
 
-import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,15 +28,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.PetAvatar
 import org.librepaw.app.ui.common.PetStatusPresentation
+import org.librepaw.app.ui.common.asString
+import org.librepaw.app.ui.common.rememberFormatting
 import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,10 +59,10 @@ fun PetListScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Pets") },
+        title = { Text(stringResource(R.string.pets_title)) },
         actions = {
           IconButton(onClick = viewModel::refresh) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh))
           }
         },
         colors =
@@ -73,7 +76,7 @@ fun PetListScreen(
     Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
       when (val state = uiState) {
         PetListUiState.Loading -> LoadingContent()
-        is PetListUiState.Failed -> FailedContent(message = state.message, onRetry = viewModel::refresh)
+        is PetListUiState.Failed -> FailedContent(message = state.message.asString(), onRetry = viewModel::refresh)
         is PetListUiState.Loaded ->
           if (state.pets.isEmpty()) {
             EmptyContent()
@@ -93,16 +96,16 @@ private fun LoadingContent() {
     verticalArrangement = Arrangement.Center,
   ) {
     CircularProgressIndicator()
-    Text("Loading pets…", modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium)
+    Text(stringResource(R.string.loading_pets), modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium)
   }
 }
 
 @Composable
 private fun FailedContent(message: String, onRetry: () -> Unit) {
   EmptyStateMessage(
-    title = "Couldn't Load Pets",
+    title = stringResource(R.string.pets_couldnt_load),
     description = message,
-    actionLabel = "Try Again",
+    actionLabel = stringResource(R.string.action_try_again),
     onAction = onRetry,
   )
 }
@@ -110,8 +113,8 @@ private fun FailedContent(message: String, onRetry: () -> Unit) {
 @Composable
 private fun EmptyContent() {
   EmptyStateMessage(
-    title = "No Pets Yet",
-    description = "Pets you add as devices in Traccar will show up here.",
+    title = stringResource(R.string.pets_empty_title),
+    description = stringResource(R.string.pets_empty_description),
   )
 }
 
@@ -181,11 +184,10 @@ private fun PetGridCell(pet: Pet, petRepository: PetRepository, onClick: () -> U
   }
 }
 
+@Composable
 private fun subtitle(pet: Pet): String =
   when {
-    pet.status == Pet.Status.ONLINE -> "Online"
-    pet.lastSeenAt != null ->
-      DateUtils.getRelativeTimeSpanString(pet.lastSeenAt, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS)
-        .toString()
-    else -> PetStatusPresentation.label(pet.status)
+    pet.status == Pet.Status.ONLINE -> stringResource(R.string.pet_status_online)
+    pet.lastSeenAt != null -> rememberFormatting().relative(pet.lastSeenAt)
+    else -> stringResource(PetStatusPresentation.label(pet.status))
   }

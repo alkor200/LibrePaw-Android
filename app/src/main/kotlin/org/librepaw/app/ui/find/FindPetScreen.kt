@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
@@ -45,18 +44,21 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.LocationHeadingService
-import org.librepaw.app.ui.petdetail.formattedDistance
+import org.librepaw.app.ui.common.asString
+import org.librepaw.app.ui.common.rememberFormatting
 
 /**
  * An AirTag-style "Find" screen: a compass arrow that rotates to always point toward the pet's
@@ -109,10 +111,10 @@ fun FindPetScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Find $petName") },
+        title = { Text(stringResource(R.string.find_title, petName)) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
           }
         },
         colors =
@@ -127,7 +129,7 @@ fun FindPetScreen(
       val loadedPet = (uiState as? FindPetUiState.Loaded)?.pet
       when {
         !hasPermission -> DeniedContent(petName = petName, onOpenSettings = { openAppSettings(context) })
-        uiState is FindPetUiState.Failed -> FailedContent((uiState as FindPetUiState.Failed).message, onRetry = viewModel::refresh)
+        uiState is FindPetUiState.Failed -> FailedContent((uiState as FindPetUiState.Failed).message.asString(), onRetry = viewModel::refresh)
         uiState is FindPetUiState.Loading -> LoadingContent()
         loadedPet?.lastPosition == null -> NoPositionContent(petName)
         coordinate == null -> FindingLocationContent()
@@ -180,9 +182,9 @@ private fun CompassContent(pet: Pet, userCoordinate: Coordinate, headingDegrees:
       modifier = Modifier.padding(top = 32.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Text(formattedDistance(distanceMeters), fontSize = 40.sp, style = MaterialTheme.typography.headlineLarge)
+      Text(rememberFormatting().distance(distanceMeters), fontSize = 40.sp, style = MaterialTheme.typography.headlineLarge)
       Text(
-        "Last position ${relativeTime(position.recordedAt)}",
+        stringResource(R.string.find_last_position, rememberFormatting().relative(position.recordedAt)),
         modifier = Modifier.padding(top = 4.dp),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -197,7 +199,7 @@ private fun CompassContent(pet: Pet, userCoordinate: Coordinate, headingDegrees:
       ) {
         Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
         Text(
-          "Compass unavailable, pointing from magnetic north instead.",
+          stringResource(R.string.find_compass_unavailable),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -210,7 +212,7 @@ private fun CompassContent(pet: Pet, userCoordinate: Coordinate, headingDegrees:
 private fun LoadingContent() {
   Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
     CircularProgressIndicator()
-    Text("Loading pet…", modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium)
+    Text(stringResource(R.string.loading_pet), modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium)
   }
 }
 
@@ -218,7 +220,7 @@ private fun LoadingContent() {
 private fun FindingLocationContent() {
   Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
     CircularProgressIndicator()
-    Text("Finding your location…", modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium)
+    Text(stringResource(R.string.find_finding_location), modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.bodyMedium)
   }
 }
 
@@ -230,9 +232,9 @@ private fun NoPositionContent(petName: String) {
     verticalArrangement = Arrangement.Center,
   ) {
     Icon(Icons.Filled.LocationOff, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text("No Known Position", modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.titleLarge)
+    Text(stringResource(R.string.find_no_position_title), modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.titleLarge)
     Text(
-      "$petName's tracker hasn't reported a position yet.",
+      stringResource(R.string.find_no_position_description, petName),
       modifier = Modifier.padding(top = 8.dp),
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -248,14 +250,14 @@ private fun DeniedContent(petName: String, onOpenSettings: () -> Unit) {
     verticalArrangement = Arrangement.Center,
   ) {
     Icon(Icons.Filled.LocationOff, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text("Location Access Needed", modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.titleLarge)
+    Text(stringResource(R.string.find_location_needed_title), modifier = Modifier.padding(top = 16.dp), style = MaterialTheme.typography.titleLarge)
     Text(
-      "LibrePaw needs your location to point you toward $petName.",
+      stringResource(R.string.find_location_needed_description, petName),
       modifier = Modifier.padding(top = 8.dp),
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Button(onClick = onOpenSettings, modifier = Modifier.padding(top = 24.dp)) { Text("Open Settings") }
+    Button(onClick = onOpenSettings, modifier = Modifier.padding(top = 24.dp)) { Text(stringResource(R.string.action_open_settings)) }
   }
 }
 
@@ -266,14 +268,11 @@ private fun FailedContent(message: String, onRetry: () -> Unit) {
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {
-    Text("Couldn't Load Pet", style = MaterialTheme.typography.titleLarge)
+    Text(stringResource(R.string.error_couldnt_load_pet), style = MaterialTheme.typography.titleLarge)
     Text(message, modifier = Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Button(onClick = onRetry, modifier = Modifier.padding(top = 24.dp)) { Text("Try Again") }
+    Button(onClick = onRetry, modifier = Modifier.padding(top = 24.dp)) { Text(stringResource(R.string.action_try_again)) }
   }
 }
-
-private fun relativeTime(epochMillis: Long): String =
-  DateUtils.getRelativeTimeSpanString(epochMillis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
 
 private fun openAppSettings(context: Context) {
   val intent =

@@ -1,6 +1,5 @@
 package org.librepaw.app.ui.petdetail
 
-import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -57,15 +56,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.NavigationLauncher
 import org.librepaw.app.ui.common.PetAvatar
 import org.librepaw.app.ui.common.PetStatusPresentation
+import org.librepaw.app.ui.common.asString
+import org.librepaw.app.ui.common.rememberFormatting
 import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,7 +91,7 @@ fun PetDetailScreen(
     viewModel(key = "pet-detail-$petId-$dataVersion") { PetDetailViewModel(petId, petRepository) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-  val title = (uiState as? PetDetailUiState.Loaded)?.pet?.name ?: "Pet"
+  val title = (uiState as? PetDetailUiState.Loaded)?.pet?.name ?: stringResource(R.string.pet_fallback_title)
 
   Scaffold(
     modifier = modifier,
@@ -97,7 +100,7 @@ fun PetDetailScreen(
         title = { Text(title) },
         navigationIcon = {
           IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
           }
         },
         colors =
@@ -118,7 +121,7 @@ fun PetDetailScreen(
           ) {
             CircularProgressIndicator()
             Text(
-              "Loading pet…",
+              stringResource(R.string.loading_pet),
               modifier = Modifier.padding(top = 16.dp),
               style = MaterialTheme.typography.bodyMedium,
             )
@@ -129,14 +132,14 @@ fun PetDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
           ) {
-            Text("Couldn't Load Pet", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.error_couldnt_load_pet), style = MaterialTheme.typography.titleLarge)
             Text(
-              state.message,
+              state.message.asString(),
               modifier = Modifier.padding(top = 8.dp),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text("Try Again") }
+            Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text(stringResource(R.string.action_try_again)) }
           }
         is PetDetailUiState.Loaded ->
           PetDetailContent(
@@ -188,7 +191,7 @@ private fun PetDetailContent(
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
               Icons.Filled.Edit,
-              contentDescription = "Edit",
+              contentDescription = stringResource(R.string.action_edit),
               tint = MaterialTheme.colorScheme.onPrimary,
               modifier = Modifier.size(16.dp),
             )
@@ -217,7 +220,7 @@ private fun PetDetailContent(
         contentPadding = PaddingValues(vertical = 14.dp),
       ) {
         Icon(Icons.Filled.Explore, contentDescription = null, modifier = Modifier.size(20.dp))
-        Text("Find ${pet.name}", modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.pet_detail_find, pet.name), modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium)
       }
     }
 
@@ -233,18 +236,18 @@ private fun PetDetailContent(
       if (position != null) {
         ActionRow(
           icon = Icons.Filled.Navigation,
-          label = "Navigate to ${pet.name}",
+          label = stringResource(R.string.pet_detail_navigate, pet.name),
           onClick = { NavigationLauncher.navigateTo(context, position.latitude, position.longitude, pet.name) },
         )
-        ActionRow(icon = Icons.Filled.Map, label = "View on Map", onClick = { onViewOnMapClick(pet) })
+        ActionRow(icon = Icons.Filled.Map, label = stringResource(R.string.pet_detail_view_on_map), onClick = { onViewOnMapClick(pet) })
       }
       if (permissions?.canViewExcursions == true) {
-        ActionRow(icon = Icons.Filled.Route, label = "Trail", onClick = { onTrailClick(pet) })
-        ActionRow(icon = Icons.Filled.Pets, label = "Excursions", onClick = { onExcursionsClick(pet) })
+        ActionRow(icon = Icons.Filled.Route, label = stringResource(R.string.pet_detail_trail), onClick = { onTrailClick(pet) })
+        ActionRow(icon = Icons.Filled.Pets, label = stringResource(R.string.pet_detail_excursions), onClick = { onExcursionsClick(pet) })
       }
-      ActionRow(icon = Icons.Filled.Home, label = "${pet.name}'s Homes", onClick = { onHomesClick(pet) })
+      ActionRow(icon = Icons.Filled.Home, label = stringResource(R.string.pet_detail_homes, pet.name), onClick = { onHomesClick(pet) })
       if (permissions?.isAdministrator == true) {
-        ActionRow(icon = Icons.Filled.PersonAdd, label = "Share ${pet.name}", onClick = { onSharePetClick(pet) })
+        ActionRow(icon = Icons.Filled.PersonAdd, label = stringResource(R.string.pet_detail_share, pet.name), onClick = { onSharePetClick(pet) })
       }
     }
 
@@ -275,7 +278,7 @@ private fun PetDetailContent(
       color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Text("Location", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.pet_detail_location), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(locationText(pet), modifier = Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodyMedium)
       }
     }
@@ -323,7 +326,7 @@ private fun StatTile(
       if (onRecalculate != null) {
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
           DropdownMenuItem(
-            text = { Text("Recalculate Lifetime Stats") },
+            text = { Text(stringResource(R.string.pet_detail_recalculate)) },
             leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
             enabled = !isRecalculating,
             onClick = {
@@ -339,19 +342,27 @@ private fun StatTile(
 
 private data class Tile(val icon: ImageVector, val label: String, val value: String, val onRecalculate: (() -> Unit)? = null)
 
+@Composable
 private fun statTiles(pet: Pet, viewModel: PetDetailViewModel): List<Tile> {
+  val format = rememberFormatting()
   val tiles = mutableListOf<Tile>()
   val position = pet.lastPosition
-  tiles += Tile(Icons.Filled.Speed, "Speed", position?.let { "%.1f km/h".format(it.speedKilometersPerHour) } ?: "—")
-  tiles += Tile(Icons.Filled.Schedule, "Last Update", pet.lastSeenAt?.let { relativeTime(it) } ?: "—")
-  position?.batteryLevelPercent?.let { tiles += Tile(batteryIcon(it), "Battery", "${it.toInt()}%") }
-  viewModel.totalTrailDistanceMeters?.let { tiles += Tile(Icons.Filled.Map, "Distance Today", formattedDistance(it)) }
-  viewModel.totalTimeAwayTodayMillis?.let { tiles += Tile(Icons.Filled.Pets, "Time Away Today", formattedDuration(it)) }
+  tiles += Tile(Icons.Filled.Speed, stringResource(R.string.pet_detail_speed), position?.let { format.speed(it.speedKilometersPerHour) } ?: "—")
+  tiles += Tile(Icons.Filled.Schedule, stringResource(R.string.pet_detail_last_update), pet.lastSeenAt?.let { format.relative(it) } ?: "—")
+  position?.batteryLevelPercent?.let { tiles += Tile(batteryIcon(it), stringResource(R.string.pet_detail_battery), format.percent(it)) }
+  viewModel.totalTrailDistanceMeters?.let {
+    tiles += Tile(Icons.Filled.Map, stringResource(R.string.pet_detail_distance_today), format.distance(it))
+  }
+  viewModel.totalTimeAwayTodayMillis?.let {
+    tiles += Tile(Icons.Filled.Pets, stringResource(R.string.pet_detail_time_away_today), format.duration(it))
+  }
   viewModel.lifetimeStats?.takeIf { it.totalDistanceMeters > 0 }?.let {
-    tiles += Tile(Icons.Filled.Map, "Total Distance", formattedDistance(it.totalDistanceMeters), onRecalculate = viewModel::recalculate)
+    tiles +=
+      Tile(Icons.Filled.Map, stringResource(R.string.pet_detail_total_distance), format.distance(it.totalDistanceMeters), onRecalculate = viewModel::recalculate)
   }
   viewModel.lifetimeStats?.takeIf { it.totalDurationMillis > 0 }?.let {
-    tiles += Tile(Icons.Filled.Pets, "Total Time Away", formattedDuration(it.totalDurationMillis), onRecalculate = viewModel::recalculate)
+    tiles +=
+      Tile(Icons.Filled.Pets, stringResource(R.string.pet_detail_total_time_away), format.duration(it.totalDurationMillis), onRecalculate = viewModel::recalculate)
   }
   return tiles
 }
@@ -366,32 +377,16 @@ private fun batteryIcon(percent: Double): ImageVector =
     else -> Icons.Filled.BatteryFull
   }
 
+@Composable
 private fun locationText(pet: Pet): String {
-  val position = pet.lastPosition ?: return "No location yet."
-  return position.address ?: "%.5f, %.5f".format(position.latitude, position.longitude)
+  val position = pet.lastPosition ?: return stringResource(R.string.pet_detail_no_location)
+  return position.address ?: rememberFormatting().coordinate(position.latitude, position.longitude)
 }
 
+@Composable
 private fun statusCaption(pet: Pet): String {
-  val label = PetStatusPresentation.label(pet.status)
+  val label = stringResource(PetStatusPresentation.label(pet.status))
   if (pet.status == Pet.Status.ONLINE) return label
   val lastSeenAt = pet.lastSeenAt ?: return label
-  return "$label · ${relativeTime(lastSeenAt)}"
-}
-
-private fun relativeTime(epochMillis: Long): String =
-  DateUtils.getRelativeTimeSpanString(epochMillis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
-
-internal fun formattedDistance(meters: Double): String =
-  if (meters < 1000) "%.0f m".format(meters) else "%.1f km".format(meters / 1000)
-
-internal fun formattedDuration(millis: Long): String {
-  val totalMinutes = millis / 60_000
-  val days = totalMinutes / (60 * 24)
-  val hours = (totalMinutes / 60) % 24
-  val minutes = totalMinutes % 60
-  return when {
-    days > 0 -> "${days}d ${hours}h"
-    hours > 0 -> "${hours}h ${minutes}m"
-    else -> "${minutes}m"
-  }
+  return stringResource(R.string.pet_detail_status_line, label, rememberFormatting().relative(lastSeenAt))
 }

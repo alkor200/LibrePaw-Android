@@ -8,9 +8,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 import org.librepaw.app.ui.petdetail.bestEffort
 
 sealed interface FindPetUiState {
@@ -18,7 +21,7 @@ sealed interface FindPetUiState {
 
   data class Loaded(val pet: Pet) : FindPetUiState
 
-  data class Failed(val message: String) : FindPetUiState
+  data class Failed(val message: UiText) : FindPetUiState
 }
 
 private const val POLL_INTERVAL_MILLIS = 5_000L
@@ -43,9 +46,9 @@ class FindPetViewModel(private val petId: Int, private val petRepository: PetRep
       _uiState.value =
         try {
           val pet = petRepository.fetchPets().firstOrNull { it.id == petId }
-          if (pet == null) FindPetUiState.Failed("This pet could not be found.") else FindPetUiState.Loaded(pet)
+          if (pet == null) FindPetUiState.Failed(UiText(R.string.pet_not_found)) else FindPetUiState.Loaded(pet)
         } catch (e: TraccarError) {
-          FindPetUiState.Failed(e.message ?: "Something went wrong.")
+          FindPetUiState.Failed(e.toUiText())
         }
     }
   }

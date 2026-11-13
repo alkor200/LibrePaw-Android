@@ -26,10 +26,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.librepaw.app.BuildConfig
+import org.librepaw.app.R
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.settings.AppearanceMode
 import org.librepaw.app.data.settings.AppearancePreferences
@@ -49,7 +51,7 @@ fun SettingsScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Settings") },
+        title = { Text(stringResource(R.string.settings_title)) },
         colors =
           TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background,
@@ -63,13 +65,13 @@ fun SettingsScreen(
         Modifier.padding(innerPadding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
           .padding(bottom = BottomBarClearance),
     ) {
-      SectionHeader("Account")
+      SectionHeader(stringResource(R.string.settings_account))
       InfoCard {
-        SettingsRow(label = "Server", value = session.serverUrl.toHttpUrlOrNull()?.host ?: session.serverUrl)
-        SettingsRow(label = "Email", value = session.email)
+        SettingsRow(label = stringResource(R.string.settings_server), value = session.serverUrl.toHttpUrlOrNull()?.host ?: session.serverUrl)
+        SettingsRow(label = stringResource(R.string.settings_email), value = session.email)
       }
 
-      SectionHeader("Appearance")
+      SectionHeader(stringResource(R.string.settings_appearance))
       AppearancePicker(appearancePreferences = appearancePreferences)
 
       SectionHeader("")
@@ -82,7 +84,7 @@ fun SettingsScreen(
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
           ),
       ) {
-        Text("Log Out")
+        Text(stringResource(R.string.settings_log_out))
       }
 
       VersionFooter()
@@ -92,7 +94,7 @@ fun SettingsScreen(
   if (showLogOutConfirmation) {
     AlertDialog(
       onDismissRequest = { showLogOutConfirmation = false },
-      title = { Text("Log Out?") },
+      title = { Text(stringResource(R.string.settings_log_out_confirmation)) },
       confirmButton = {
         TextButton(
           onClick = {
@@ -100,10 +102,10 @@ fun SettingsScreen(
             onLogOut()
           }
         ) {
-          Text("Log Out")
+          Text(stringResource(R.string.settings_log_out))
         }
       },
-      dismissButton = { TextButton(onClick = { showLogOutConfirmation = false }) { Text("Cancel") } },
+      dismissButton = { TextButton(onClick = { showLogOutConfirmation = false }) { Text(stringResource(R.string.action_cancel)) } },
     )
   }
 }
@@ -139,19 +141,23 @@ private fun AppearancePicker(appearancePreferences: AppearancePreferences) {
 
   SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
     val options =
-      listOf(AppearanceMode.AUTOMATIC to "Automatic", AppearanceMode.LIGHT to "Light", AppearanceMode.DARK to "Dark")
+      listOf(
+        AppearanceMode.AUTOMATIC to R.string.settings_appearance_automatic,
+        AppearanceMode.LIGHT to R.string.settings_appearance_light,
+        AppearanceMode.DARK to R.string.settings_appearance_dark,
+      )
     options.forEachIndexed { index, (mode, label) ->
       SegmentedButton(
         selected = selectedMode == mode,
         onClick = { appearancePreferences.setMode(mode) },
         shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
       ) {
-        Text(label)
+        Text(stringResource(label))
       }
     }
   }
   Text(
-    "Automatic follows your device's own appearance setting.",
+    stringResource(R.string.settings_appearance_footer),
     modifier = Modifier.padding(top = 8.dp),
     style = MaterialTheme.typography.bodySmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -162,12 +168,12 @@ private fun AppearancePicker(appearancePreferences: AppearancePreferences) {
 private fun VersionFooter() {
   Column(modifier = Modifier.padding(top = 32.dp)) {
     Text(
-      "Version ${BuildConfig.VERSION_NAME}",
+      stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-      "LibrePaw is open source software and is not affiliated with Traccar.",
+      stringResource(R.string.settings_disclaimer),
       modifier = Modifier.padding(top = 4.dp),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,

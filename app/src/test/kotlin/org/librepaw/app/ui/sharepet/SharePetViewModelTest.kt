@@ -12,6 +12,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.Excursion
@@ -21,6 +22,7 @@ import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetPosition
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SharePetViewModelTest {
@@ -89,7 +91,7 @@ class SharePetViewModelTest {
     viewModel.share(onSuccess = { succeeded = true })
     dispatcher.scheduler.advanceUntilIdle()
 
-    assertEquals("No user with that email was found on this server.", viewModel.errorMessage)
+    assertEquals(UiText(R.string.error_user_not_found), viewModel.errorMessage)
     assertFalse(succeeded)
     assertFalse(viewModel.isSharing)
   }

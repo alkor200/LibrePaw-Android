@@ -20,12 +20,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.common.asString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,9 +46,9 @@ fun SharePetScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Share $petName") },
+        title = { Text(stringResource(R.string.share_pet_title, petName)) },
         navigationIcon = {
-          IconButton(onClick = onCancel) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel") }
+          IconButton(onClick = onCancel) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_cancel)) }
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
@@ -59,20 +62,20 @@ fun SharePetScreen(
       OutlinedTextField(
         value = viewModel.email,
         onValueChange = viewModel::updateEmail,
-        label = { Text("Email") },
+        label = { Text(stringResource(R.string.share_pet_email)) },
         singleLine = true,
         keyboardOptions =
           KeyboardOptions(keyboardType = KeyboardType.Email, capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Done),
         modifier = Modifier.fillMaxWidth(),
       )
       Text(
-        "The Traccar account with this email will be able to see $petName in their own copy of LibrePaw, the same as you.",
+        stringResource(R.string.share_pet_explanation, petName),
         modifier = Modifier.padding(top = 8.dp),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
 
-      viewModel.errorMessage?.let { message ->
+      viewModel.errorMessage?.asString()?.let { message ->
         Text(
           message,
           modifier = Modifier.padding(top = 16.dp),
@@ -89,7 +92,7 @@ fun SharePetScreen(
         if (viewModel.isSharing) {
           CircularProgressIndicator(modifier = Modifier.padding(2.dp), color = MaterialTheme.colorScheme.onPrimary)
         } else {
-          Text("Share $petName")
+          Text(stringResource(R.string.share_pet_title, petName))
         }
       }
     }

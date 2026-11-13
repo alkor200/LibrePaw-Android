@@ -15,6 +15,8 @@ import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetPosition
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 /**
  * Aggregates every excursion in an adjustable window (default 24 hours), each with its own
@@ -34,7 +36,7 @@ class TrailViewModel(private val petId: Int, private val petRepository: PetRepos
   var isLoading by mutableStateOf(true)
     private set
 
-  var errorMessage by mutableStateOf<String?>(null)
+  var errorMessage by mutableStateOf<UiText?>(null)
     private set
 
   /** The most recently started load, so switching [window] cancels a stale one still in flight
@@ -70,7 +72,7 @@ class TrailViewModel(private val petId: Int, private val petRepository: PetRepos
         } catch (e: CancellationException) {
           throw e
         } catch (e: TraccarError) {
-          errorMessage = e.message ?: "Something went wrong."
+          errorMessage = e.toUiText()
           isLoading = false
         }
       }

@@ -26,14 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
+import org.librepaw.app.ui.common.asString
 import org.librepaw.app.ui.theme.LibrePawTheme
 
 @Composable
@@ -55,7 +58,7 @@ fun LoginScreen(
     usesInsecureConnection = viewModel.usesInsecureConnection,
     canSubmit = viewModel.canSubmit,
     isLoggingIn = viewModel.isLoggingIn,
-    errorMessage = viewModel.errorMessage,
+    errorMessage = viewModel.errorMessage?.asString(),
     onSubmit = viewModel::logIn,
     modifier = modifier,
   )
@@ -92,13 +95,13 @@ private fun LoginForm(
       modifier = Modifier.size(56.dp),
     )
     Spacer(Modifier.height(12.dp))
-    Text("LibrePaw", style = MaterialTheme.typography.headlineMedium)
+    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
     Spacer(Modifier.height(32.dp))
 
     OutlinedTextField(
       value = serverUrlString,
       onValueChange = onServerUrlChange,
-      label = { Text("Server") },
+      label = { Text(stringResource(R.string.login_server)) },
       placeholder = { Text("traccar.example.com") },
       singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
@@ -107,7 +110,7 @@ private fun LoginForm(
     )
     if (usesInsecureConnection) {
       Text(
-        "This server address uses an insecure connection (http). Use https instead.",
+        stringResource(R.string.login_insecure_connection),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error,
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -119,7 +122,7 @@ private fun LoginForm(
     OutlinedTextField(
       value = email,
       onValueChange = onEmailChange,
-      label = { Text("Email") },
+      label = { Text(stringResource(R.string.login_email)) },
       singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
       keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
@@ -131,7 +134,7 @@ private fun LoginForm(
     OutlinedTextField(
       value = password,
       onValueChange = onPasswordChange,
-      label = { Text("Password") },
+      label = { Text(stringResource(R.string.login_password)) },
       singleLine = true,
       visualTransformation = PasswordVisualTransformation(),
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -160,7 +163,7 @@ private fun LoginForm(
           strokeWidth = 2.dp,
         )
       } else {
-        Text("Log In")
+        Text(stringResource(R.string.login_log_in))
       }
     }
   }

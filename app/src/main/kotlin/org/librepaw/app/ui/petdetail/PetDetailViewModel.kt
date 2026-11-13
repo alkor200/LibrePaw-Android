@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.AccountPermissions
 import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.Excursion
@@ -19,13 +20,15 @@ import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetPosition
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 sealed interface PetDetailUiState {
   object Loading : PetDetailUiState
 
   data class Loaded(val pet: Pet, val permissions: AccountPermissions?) : PetDetailUiState
 
-  data class Failed(val message: String) : PetDetailUiState
+  data class Failed(val message: UiText) : PetDetailUiState
 }
 
 class PetDetailViewModel(private val petId: Int, private val petRepository: PetRepository) : ViewModel() {
@@ -64,7 +67,7 @@ class PetDetailViewModel(private val petId: Int, private val petRepository: PetR
         try {
           val pet = petRepository.fetchPets().firstOrNull { it.id == petId }
           if (pet == null) {
-            PetDetailUiState.Failed("This pet could not be found.")
+            PetDetailUiState.Failed(UiText(R.string.pet_not_found))
           } else {
             // Best-effort and fail-closed: if permissions can't be determined, the edit
             // affordance that depends on them simply stays hidden, same as iOS.
@@ -72,7 +75,7 @@ class PetDetailViewModel(private val petId: Int, private val petRepository: PetR
             PetDetailUiState.Loaded(pet, permissions)
           }
         } catch (e: TraccarError) {
-          PetDetailUiState.Failed(e.message ?: "Something went wrong.")
+          PetDetailUiState.Failed(e.toUiText())
         }
     }
   }

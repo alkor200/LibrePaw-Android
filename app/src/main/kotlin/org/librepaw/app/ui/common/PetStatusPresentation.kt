@@ -1,5 +1,7 @@
 package org.librepaw.app.ui.common
 
+import androidx.annotation.StringRes
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Pet
 
 /** Shared status -> color/label mapping, used by both the Pet List grid and the Map's markers. */
@@ -11,10 +13,11 @@ object PetStatusPresentation {
       Pet.Status.UNKNOWN -> 0xFFFF8F00.toInt()
     }
 
-  fun label(status: Pet.Status): String =
+  @StringRes
+  fun label(status: Pet.Status): Int =
     when (status) {
-      Pet.Status.ONLINE -> "Online"
-      Pet.Status.OFFLINE -> "Offline"
-      Pet.Status.UNKNOWN -> "Unknown"
+      Pet.Status.ONLINE -> R.string.pet_status_online
+      Pet.Status.OFFLINE -> R.string.pet_status_offline
+      Pet.Status.UNKNOWN -> R.string.pet_status_unknown
     }
 }

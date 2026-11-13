@@ -79,7 +79,7 @@ fun PetAvatar(
         modifier = Modifier.align(Alignment.BottomEnd),
       ) {
         Text(
-          "${batteryPercent.toInt()}%",
+          rememberFormatting().percent(batteryPercent),
           modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSecondary,

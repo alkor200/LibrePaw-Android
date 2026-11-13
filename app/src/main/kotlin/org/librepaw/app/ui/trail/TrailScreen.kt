@@ -33,14 +33,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetPosition
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
+import org.librepaw.app.ui.common.asString
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -95,9 +98,9 @@ fun TrailScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Trail") },
+        title = { Text(stringResource(R.string.trail_title)) },
         navigationIcon = {
-          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
@@ -123,9 +126,9 @@ fun TrailScreen(
           color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         ) {
           Column(modifier = Modifier.padding(24.dp)) {
-            Text("No Trail Yet", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.trail_empty_title), style = MaterialTheme.typography.titleMedium)
             Text(
-              "$petName hasn't been on an excursion in the last ${viewModel.window.label}.",
+              stringResource(R.string.trail_empty_description, petName, stringResource(viewModel.window.label)),
               modifier = Modifier.padding(top = 4.dp),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -139,14 +142,14 @@ fun TrailScreen(
           color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         ) {
           Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Couldn't Load Trail", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.trail_couldnt_load), style = MaterialTheme.typography.titleMedium)
             Text(
-              viewModel.errorMessage.orEmpty(),
+              viewModel.errorMessage?.asString().orEmpty(),
               modifier = Modifier.padding(top = 4.dp),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = viewModel::retry, modifier = Modifier.padding(top = 16.dp)) { Text("Try Again") }
+            Button(onClick = viewModel::retry, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.action_try_again)) }
           }
         }
       }
@@ -178,7 +181,7 @@ private fun WindowPicker(selected: TrailWindow, onSelect: (TrailWindow) -> Unit,
           onClick = { onSelect(window) },
           shape = SegmentedButtonDefaults.itemShape(index = index, count = TrailWindow.entries.size),
         ) {
-          Text(window.label)
+          Text(stringResource(window.label))
         }
       }
     }

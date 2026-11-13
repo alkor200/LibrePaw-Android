@@ -37,14 +37,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Excursion
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.common.asString
+import org.librepaw.app.ui.common.rememberFormatting
 import org.librepaw.app.ui.home.BottomBarClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,12 +65,12 @@ fun ExcursionsScreen(
     modifier = modifier,
     topBar = {
       CenterAlignedTopAppBar(
-        title = { Text("Excursions") },
+        title = { Text(stringResource(R.string.excursions_title)) },
         navigationIcon = {
-          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+          IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back)) }
         },
         actions = {
-          IconButton(onClick = viewModel::refresh) { Icon(Icons.Filled.Refresh, contentDescription = "Refresh") }
+          IconButton(onClick = viewModel::refresh) { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh)) }
         },
         colors =
           TopAppBarDefaults.topAppBarColors(
@@ -89,14 +90,14 @@ fun ExcursionsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
           ) {
-            Text("Couldn't Load Excursions", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.excursions_couldnt_load), style = MaterialTheme.typography.titleLarge)
             Text(
-              state.message,
+              state.message.asString(),
               modifier = Modifier.padding(top = 8.dp),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text("Try Again") }
+            Button(onClick = viewModel::refresh, modifier = Modifier.padding(top = 24.dp)) { Text(stringResource(R.string.action_try_again)) }
           }
         is ExcursionsUiState.Loaded ->
           if (state.excursions.isEmpty()) {
@@ -105,9 +106,9 @@ fun ExcursionsScreen(
               horizontalAlignment = Alignment.CenterHorizontally,
               verticalArrangement = Arrangement.Center,
             ) {
-              Text("No Excursions Yet", style = MaterialTheme.typography.titleLarge)
+              Text(stringResource(R.string.excursions_empty_title), style = MaterialTheme.typography.titleLarge)
               Text(
-                "Once $petName leaves home and comes back, excursions will show up here. Make sure a home location is set first.",
+                stringResource(R.string.excursions_empty_description, petName),
                 modifier = Modifier.padding(top = 8.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -128,13 +129,14 @@ fun ExcursionsScreen(
 
 @Composable
 private fun ExcursionRow(excursion: Excursion, homeNamesById: Map<Int, String>, onClick: () -> Unit) {
+  val format = rememberFormatting()
   Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp)) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Text(dateTimeText(excursion.startTime), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+      Text(format.dateTime(excursion.startTime), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
       if (excursion.isOngoing) {
-        Badge(icon = Icons.Filled.Pets, text = "Away now", color = MaterialTheme.colorScheme.tertiary)
+        Badge(icon = Icons.Filled.Pets, text = stringResource(R.string.excursions_away_now), color = MaterialTheme.colorScheme.tertiary)
       } else if (excursion.isLikelyVehicleTrip) {
-        Badge(icon = Icons.Filled.DirectionsCar, text = "Car ride?", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Badge(icon = Icons.Filled.DirectionsCar, text = stringResource(R.string.excursions_car_ride), color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
 
@@ -156,8 +158,8 @@ private fun ExcursionRow(excursion: Excursion, homeNamesById: Map<Int, String>, 
     }
 
     Row(modifier = Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-      excursion.durationMillis?.let { IconLabel(icon = Icons.Filled.Schedule, text = durationText(it)) }
-      excursion.distanceMeters?.let { IconLabel(icon = Icons.Filled.Map, text = distanceText(it)) }
+      excursion.durationMillis?.let { IconLabel(icon = Icons.Filled.Schedule, text = format.duration(it)) }
+      excursion.distanceMeters?.let { IconLabel(icon = Icons.Filled.Map, text = format.distance(it)) }
     }
   }
 }
@@ -189,13 +191,3 @@ private fun routeText(excursion: Excursion, homeNamesById: Map<Int, String>): St
   return "$start → $end"
 }
 
-private fun dateTimeText(epochMillis: Long): String =
-  SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(epochMillis))
-
-internal fun durationText(millis: Long): String {
-  val minutes = millis / 60_000
-  if (minutes < 60) return "$minutes min"
-  return "${minutes / 60}h ${minutes % 60}m"
-}
-
-internal fun distanceText(meters: Double): String = if (meters < 1000) "${meters.toInt()} m" else "%.1f km".format(meters / 1000)

@@ -2,10 +2,10 @@ package org.librepaw.app.ui.auth
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import okhttp3.HttpUrl
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -14,9 +14,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.librepaw.app.R
 import org.librepaw.app.data.auth.AuthenticationService
 import org.librepaw.app.data.auth.StoredSession
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.UiText
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -89,7 +91,7 @@ class LoginViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     assertNull(viewModel.loggedInSession)
-    assertEquals("The email or password is incorrect.", viewModel.errorMessage)
+    assertEquals(UiText(R.string.error_invalid_credentials), viewModel.errorMessage)
     assertFalse(viewModel.isLoggingIn)
   }
 }

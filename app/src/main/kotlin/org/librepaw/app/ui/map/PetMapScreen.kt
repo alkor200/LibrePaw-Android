@@ -35,15 +35,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.gson.JsonObject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Coordinate
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
@@ -54,6 +56,7 @@ import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.LocationHeadingService
 import org.librepaw.app.ui.common.MapLibreHost
 import org.librepaw.app.ui.common.NavigationLauncher
+import org.librepaw.app.ui.common.asString
 import org.librepaw.app.ui.home.BottomBarClearance
 import org.librepaw.app.ui.theme.LocalDarkTheme
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -117,7 +120,7 @@ fun PetMapScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             CircularProgressIndicator(modifier = Modifier.padding(4.dp))
-            Text("Loading pets…", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.loading_pets), style = MaterialTheme.typography.bodyMedium)
           }
         }
       is PetMapUiState.Failed ->
@@ -127,7 +130,7 @@ fun PetMapScreen(
           color = MaterialTheme.colorScheme.errorContainer,
         ) {
           Text(
-            state.message,
+            state.message.asString(),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             color = MaterialTheme.colorScheme.onErrorContainer,
           )
@@ -140,9 +143,9 @@ fun PetMapScreen(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
           ) {
             Column(modifier = Modifier.padding(24.dp)) {
-              Text("No Pet Locations Yet", style = MaterialTheme.typography.titleMedium)
+              Text(stringResource(R.string.map_no_locations_title), style = MaterialTheme.typography.titleMedium)
               Text(
-                "Pets will appear here once they've reported a position.",
+                stringResource(R.string.map_no_locations_description),
                 modifier = Modifier.padding(top = 4.dp),
                 style = MaterialTheme.typography.bodyMedium,
               )
@@ -344,7 +347,7 @@ private fun LocateButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     shadowElevation = 4.dp,
   ) {
     Box(contentAlignment = Alignment.Center) {
-      Icon(Icons.Filled.MyLocation, contentDescription = "Show My Location")
+      Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.map_show_my_location))
     }
   }
 }

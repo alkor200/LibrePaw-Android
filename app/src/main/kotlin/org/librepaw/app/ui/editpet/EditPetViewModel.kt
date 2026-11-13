@@ -10,17 +10,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.librepaw.app.R
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
 import org.librepaw.app.ui.common.ImageDecoding
+import org.librepaw.app.ui.common.UiText
+import org.librepaw.app.ui.common.toUiText
 
 sealed interface EditPetUiState {
   object Loading : EditPetUiState
 
   data class Loaded(val pet: Pet, val currentPhoto: Bitmap?) : EditPetUiState
 
-  data class Failed(val message: String) : EditPetUiState
+  data class Failed(val message: UiText) : EditPetUiState
 }
 
 class EditPetViewModel(private val petId: Int, private val petRepository: PetRepository) : ViewModel() {
@@ -36,7 +39,7 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
   var isSaving by mutableStateOf(false)
     private set
 
-  var errorMessage by mutableStateOf<String?>(null)
+  var errorMessage by mutableStateOf<UiText?>(null)
     private set
 
   private var originalName = ""
@@ -51,7 +54,7 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
         try {
           val pet = petRepository.fetchPets().firstOrNull { it.id == petId }
           if (pet == null) {
-            EditPetUiState.Failed("This pet could not be found.")
+            EditPetUiState.Failed(UiText(R.string.pet_not_found))
           } else {
             name = pet.name
             originalName = pet.name
@@ -60,7 +63,7 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
             EditPetUiState.Loaded(pet, bitmap)
           }
         } catch (e: TraccarError) {
-          EditPetUiState.Failed(e.message ?: "Something went wrong.")
+          EditPetUiState.Failed(e.toUiText())
         }
     }
   }
@@ -100,7 +103,7 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
         onSuccess()
       } catch (e: TraccarError) {
         isSaving = false
-        errorMessage = e.message ?: "Something went wrong."
+        errorMessage = e.toUiText()
       }
     }
   }
