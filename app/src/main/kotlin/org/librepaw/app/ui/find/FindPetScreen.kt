@@ -77,12 +77,17 @@ fun FindPetScreen(
   val locationService = remember { LocationHeadingService(context.applicationContext) }
   var hasPermission by remember { mutableStateOf(locationService.hasLocationPermission()) }
   val permissionLauncher =
-    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      hasPermission = granted || locationService.hasLocationPermission()
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+      hasPermission = grants.values.any { it } || locationService.hasLocationPermission()
     }
 
+  // Both, not just fine: from Android 12 on, the documented way to let the user pick precise or
+  // approximate location is requesting the two together (fine alone may be ignored outright).
+  // Approximate is enough to point roughly the right way, it's the user's call.
   LaunchedEffect(Unit) {
-    if (!hasPermission) permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    if (!hasPermission) {
+      permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
   }
 
   // Only while the screen is actually visible, not while the app sits in the background.
