@@ -2,6 +2,8 @@ package org.librepaw.app.data.traccar
 
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -36,17 +38,41 @@ class TraccarClient(private val credentials: TraccarCredentials) {
 
   private val json = Json { ignoreUnknownKeys = true }
 
-  private var hasCookieSession = false
+  /**
+   * Guards [cookieSessionGeneration]: several requests needing the cookie session at once (e.g. the
+   * map loading every pet's photo concurrently) used to each see none yet and each log in, opening
+   * a server-side session apiece.
+   */
+  private val cookieSessionMutex = Mutex()
 
+  /** 0 while there's no cookie session, bumped every time one is (re-)established. */
+  private var cookieSessionGeneration = 0
+  private var nextCookieSessionGeneration = 1
+
+  /**
+   * In-memory only, so the cookie dies with this client. Keeps cookies by name, domain and path
+   * and honors their expiry, domain, path and `Secure` flag: it used to keep only the latest
+   * response's cookies per host, so any later response setting some other cookie (a load
+   * balancer's, say) silently dropped the session cookie.
+   */
   private val cookieJar =
     object : CookieJar {
-      private val cookies = mutableMapOf<String, List<Cookie>>()
+      private val cookies = mutableListOf<Cookie>()
 
+      @Synchronized
       override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-        this.cookies[url.host] = cookies
+        for (cookie in cookies) {
+          this.cookies.removeAll { it.name == cookie.name && it.domain == cookie.domain && it.path == cookie.path }
+          this.cookies += cookie
+        }
       }
 
-      override fun loadForRequest(url: HttpUrl): List<Cookie> = cookies[url.host] ?: emptyList()
+      @Synchronized
+      override fun loadForRequest(url: HttpUrl): List<Cookie> {
+        val now = System.currentTimeMillis()
+        cookies.removeAll { it.expiresAt < now }
+        return cookies.filter { it.matches(url) }
+      }
     }
 
   private val httpClient =
@@ -155,8 +181,13 @@ class TraccarClient(private val credentials: TraccarCredentials) {
    * in-memory jar anyway.
    */
   suspend fun endSession() {
-    if (!hasCookieSession) return
-    hasCookieSession = false
+    val hadCookieSession =
+      cookieSessionMutex.withLock {
+        val had = cookieSessionGeneration != 0
+        cookieSessionGeneration = 0
+        had
+      }
+    if (!hadCookieSession) return
     executeVoid(Request.Builder().url(credentials.serverUrl.newBuilder().addPathSegments("api/session").build()).delete().build())
   }
 
@@ -174,13 +205,13 @@ class TraccarClient(private val credentials: TraccarCredentials) {
 
   /** Fetches raw bytes from a Traccar-hosted URL (e.g. a device photo); needs the cookie session. */
   suspend fun fetchData(url: HttpUrl): ByteArray {
-    ensureCookieSession()
+    val generation = ensureCookieSession()
     val request = Request.Builder().url(url).get().build()
     val firstAttempt = withResponse(request) { response -> if (response.code == 401) null else readBytes(response) }
     if (firstAttempt != null) return firstAttempt
 
-    hasCookieSession = false
-    ensureCookieSession()
+    // The session expired server-side: renewed once, however many requests ran into it at once.
+    ensureCookieSession(replacing = generation)
     return withResponse(request, ::readBytes)
   }
 
@@ -256,8 +287,17 @@ class TraccarClient(private val credentials: TraccarCredentials) {
    * `POST /api/session` with form-urlencoded credentials with a password. Either way Traccar sets
    * the session cookie via `Set-Cookie`.
    */
-  private suspend fun ensureCookieSession() {
-    if (hasCookieSession) return
+  private suspend fun ensureCookieSession(replacing: Int? = null): Int =
+    cookieSessionMutex.withLock {
+      // Only the session the caller saw fail is replaced, not one another caller already renewed.
+      if (replacing != null && cookieSessionGeneration == replacing) cookieSessionGeneration = 0
+      if (cookieSessionGeneration != 0) return@withLock cookieSessionGeneration
+      openCookieSession()
+      cookieSessionGeneration = nextCookieSessionGeneration++
+      cookieSessionGeneration
+    }
+
+  private suspend fun openCookieSession() {
     val sessionUrl = credentials.serverUrl.newBuilder().addPathSegments("api/session")
     val request =
       when (val secret = credentials.secret) {
@@ -267,10 +307,7 @@ class TraccarClient(private val credentials: TraccarCredentials) {
             .url(sessionUrl.build())
             .post(FormBody.Builder().add("email", credentials.email).add("password", secret.value).build())
       }
-    withResponse(request.build()) { response ->
-      if (!response.isSuccessful) throw statusError(response.code)
-      hasCookieSession = true
-    }
+    withResponse(request.build()) { response -> if (!response.isSuccessful) throw statusError(response.code) }
   }
 
   private suspend inline fun <reified T> getJson(path: String): T =
