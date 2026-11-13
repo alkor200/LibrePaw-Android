@@ -1,9 +1,9 @@
 package org.librepaw.app
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +16,8 @@ import org.librepaw.app.data.settings.AppearanceMode
 import org.librepaw.app.ui.theme.LibrePawTheme
 import org.librepaw.app.ui.theme.LocalDarkTheme
 
-class MainActivity : ComponentActivity() {
+/** An AppCompatActivity (rather than a plain ComponentActivity) for per-app languages, see AppLanguage. */
+class MainActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 

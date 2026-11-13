@@ -33,6 +33,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.librepaw.app.BuildConfig
 import org.librepaw.app.R
 import org.librepaw.app.data.auth.StoredSession
+import org.librepaw.app.data.settings.AppLanguage
 import org.librepaw.app.data.settings.AppearanceMode
 import org.librepaw.app.data.settings.AppearancePreferences
 import org.librepaw.app.ui.home.BottomBarClearance
@@ -73,6 +74,9 @@ fun SettingsScreen(
 
       SectionHeader(stringResource(R.string.settings_appearance))
       AppearancePicker(appearancePreferences = appearancePreferences)
+
+      SectionHeader(stringResource(R.string.settings_language))
+      LanguagePicker()
 
       SectionHeader("")
       Button(
@@ -158,6 +162,33 @@ private fun AppearancePicker(appearancePreferences: AppearancePreferences) {
   }
   Text(
     stringResource(R.string.settings_appearance_footer),
+    modifier = Modifier.padding(top = 8.dp),
+    style = MaterialTheme.typography.bodySmall,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+  )
+}
+
+/** Changing it recreates the activity in the new language, see [AppLanguage]. */
+@Composable
+private fun LanguagePicker() {
+  var selectedLanguage by remember { mutableStateOf(AppLanguage.current()) }
+
+  SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+    AppLanguage.entries.forEachIndexed { index, language ->
+      SegmentedButton(
+        selected = selectedLanguage == language,
+        onClick = {
+          selectedLanguage = language
+          language.apply()
+        },
+        shape = SegmentedButtonDefaults.itemShape(index = index, count = AppLanguage.entries.size),
+      ) {
+        Text(stringResource(language.label))
+      }
+    }
+  }
+  Text(
+    stringResource(R.string.settings_language_footer),
     modifier = Modifier.padding(top = 8.dp),
     style = MaterialTheme.typography.bodySmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,

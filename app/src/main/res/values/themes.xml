@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.LibrePaw" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- AppCompat, since MainActivity is an AppCompatActivity (for per-app languages, see AppLanguage). -->
+    <style name="Theme.LibrePaw" parent="Theme.AppCompat.Light.NoActionBar" />
 </resources>

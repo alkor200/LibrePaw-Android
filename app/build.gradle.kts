@@ -52,6 +52,8 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.activity.compose)
+  // Per-app language (the in-app language picker), see AppLanguage
+  implementation(libs.androidx.appcompat)
 
   // Arch Components
   implementation(libs.androidx.lifecycle.runtime.compose)

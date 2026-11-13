@@ -47,6 +47,9 @@
     <string name="settings_appearance_light">Hell</string>
     <string name="settings_appearance_dark">Dunkel</string>
     <string name="settings_appearance_footer">Automatisch folgt der Darstellungseinstellung deines Geräts.</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_language_automatic">Automatisch</string>
+    <string name="settings_language_footer">Automatisch folgt der Spracheinstellung deines Geräts.</string>
     <string name="settings_log_out">Abmelden</string>
     <string name="settings_log_out_confirmation">Abmelden?</string>
     <string name="settings_version">Version %1$s</string>
