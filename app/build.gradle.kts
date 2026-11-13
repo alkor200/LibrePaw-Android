@@ -88,6 +88,9 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.kotlinx.serialization.json)
 
+  // Reading a picked photo's EXIF orientation, see ImageDecoding
+  implementation(libs.androidx.exifinterface)
+
   // Secure credential storage
   implementation(libs.androidx.security.crypto)
 

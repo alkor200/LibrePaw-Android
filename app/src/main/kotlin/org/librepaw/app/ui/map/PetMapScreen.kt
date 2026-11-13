@@ -1,7 +1,6 @@
 package org.librepaw.app.ui.map
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +33,7 @@ import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
 import org.librepaw.app.ui.common.DARK_MAP_STYLE_URL
+import org.librepaw.app.ui.common.ImageDecoding
 import org.librepaw.app.ui.common.LIGHT_MAP_STYLE_URL
 import org.librepaw.app.ui.common.MapLibreHost
 import org.librepaw.app.ui.common.NavigationLauncher
@@ -242,6 +242,9 @@ private fun PetMarkersMap(
 
 private fun markerImageId(pet: Pet) = "pet-${pet.id}"
 
+/** Markers are drawn at 128px (see PetMarkerIconFactory), so this is plenty. */
+private const val MARKER_PHOTO_MAX_DIMENSION_PX = 256
+
 /** Fetches every pet's photo concurrently, decoded and keyed by pet id; `null` for a pet with no
  * photo set or whose fetch failed, so [PetMarkerIconFactory] falls back to a paw icon for it. */
 private suspend fun fetchPhotos(petRepository: PetRepository, pets: List<Pet>): Map<Int, Bitmap?> =
@@ -250,7 +253,7 @@ private suspend fun fetchPhotos(petRepository: PetRepository, pets: List<Pet>): 
       .map { pet ->
         async {
           val bytes = try { petRepository.fetchPhoto(pet) } catch (e: TraccarError) { null }
-          pet.id to bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+          pet.id to bytes?.let { ImageDecoding.decode(it, maxDimension = MARKER_PHOTO_MAX_DIMENSION_PX) }
         }
       }
       .awaitAll()

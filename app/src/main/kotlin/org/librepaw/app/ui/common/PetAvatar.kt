@@ -1,7 +1,6 @@
 package org.librepaw.app.ui.common
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -42,7 +41,7 @@ fun PetAvatar(
     produceState<Bitmap?>(initialValue = null, key1 = pet.photoUrl) {
       value =
         try {
-          petRepository.fetchPhoto(pet)?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+          petRepository.fetchPhoto(pet)?.let { bytes -> ImageDecoding.decode(bytes, maxDimension = AVATAR_MAX_DIMENSION_PX) }
         } catch (e: TraccarError) {
           null
         }
@@ -89,3 +88,6 @@ fun PetAvatar(
     }
   }
 }
+
+/** The largest avatar is well under this, and the server's own photos are 512px crops anyway. */
+private const val AVATAR_MAX_DIMENSION_PX = 512

@@ -49,7 +49,7 @@ class EditPetViewModelTest {
 
     viewModel.updateName("Rex")
     var saved = false
-    viewModel.save(croppedJpeg = null) { saved = true }
+    viewModel.save(renderCroppedJpeg = { null }) { saved = true }
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(saved)
@@ -64,7 +64,7 @@ class EditPetViewModelTest {
     dispatcher.scheduler.advanceUntilIdle()
 
     var saved = false
-    viewModel.save(croppedJpeg = ByteArray(10)) { saved = true }
+    viewModel.save(renderCroppedJpeg = { ByteArray(10) }) { saved = true }
     dispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(saved)

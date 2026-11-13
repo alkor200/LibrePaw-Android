@@ -1,7 +1,6 @@
 package org.librepaw.app.ui.editpet
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -14,6 +13,7 @@ import kotlinx.coroutines.launch
 import org.librepaw.app.data.pets.Pet
 import org.librepaw.app.data.pets.PetRepository
 import org.librepaw.app.data.traccar.TraccarError
+import org.librepaw.app.ui.common.ImageDecoding
 
 sealed interface EditPetUiState {
   object Loading : EditPetUiState
@@ -56,7 +56,7 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
             name = pet.name
             originalName = pet.name
             val photoBytes = try { petRepository.fetchPhoto(pet) } catch (e: TraccarError) { null }
-            val bitmap = photoBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            val bitmap = photoBytes?.let { ImageDecoding.decode(it, maxDimension = PHOTO_MAX_DIMENSION_PX) }
             EditPetUiState.Loaded(pet, bitmap)
           }
         } catch (e: TraccarError) {
@@ -75,7 +75,12 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
 
   fun hasChanges(): Boolean = name.trim() != originalName || selectedImage != null
 
-  fun save(croppedJpeg: ByteArray?, onSuccess: () -> Unit) {
+  /**
+   * [renderCroppedJpeg] produces the photo to upload, `null` for none. A suspend function rather
+   * than the bytes themselves so the screen can render the crop off the main thread while
+   * [isSaving] already blocks a second tap.
+   */
+  fun save(renderCroppedJpeg: suspend () -> ByteArray?, onSuccess: () -> Unit) {
     val trimmedName = name.trim()
     if (trimmedName.isEmpty()) return
 
@@ -87,6 +92,7 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
           petRepository.renamePet(petId, trimmedName)
           originalName = trimmedName
         }
+        val croppedJpeg = renderCroppedJpeg()
         if (croppedJpeg != null) {
           petRepository.setPhoto(petId, croppedJpeg)
         }
@@ -99,3 +105,6 @@ class EditPetViewModel(private val petId: Int, private val petRepository: PetRep
     }
   }
 }
+
+/** The server's own photos are 512px crops (see renderCircularCropJpeg), with room for older, larger ones. */
+private const val PHOTO_MAX_DIMENSION_PX = 1024

@@ -1,7 +1,6 @@
 package org.librepaw.app.ui.editpet
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,10 +57,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.librepaw.app.data.pets.PetRepository
+import org.librepaw.app.ui.common.ImageDecoding
 import org.librepaw.app.ui.home.BottomBarClearance
 
 private val CROP_DIAMETER = 220.dp
+
+/** Plenty for a 512px crop output (see renderCircularCropJpeg) even when zoomed in. */
+private const val PICKED_PHOTO_MAX_DIMENSION_PX = 2048
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +82,7 @@ fun EditPetScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val density = LocalDensity.current
   val context = LocalContext.current
+  val coroutineScope = rememberCoroutineScope()
   val cropDiameterPx = with(density) { CROP_DIAMETER.toPx() }
 
   var scale by remember { mutableFloatStateOf(1f) }
@@ -88,9 +96,9 @@ fun EditPetScreen(
   val pickPhotoLauncher =
     rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
       if (uri == null) return@rememberLauncherForActivityResult
-      val bitmap =
-        context.contentResolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream) }
-      if (bitmap != null) viewModel.selectImage(bitmap)
+      coroutineScope.launch {
+        ImageDecoding.decode(context.contentResolver, uri, PICKED_PHOTO_MAX_DIMENSION_PX)?.let(viewModel::selectImage)
+      }
     }
 
   Scaffold(
@@ -106,9 +114,14 @@ fun EditPetScreen(
           TextButton(
             enabled = canSave,
             onClick = {
-              val croppedJpeg =
-                viewModel.selectedImage?.let { renderCircularCropJpeg(it, scale, offset, cropDiameterPx) }
-              viewModel.save(croppedJpeg, onSuccess = onSaved)
+              val image = viewModel.selectedImage
+              val (cropScale, cropOffset) = scale to offset
+              viewModel.save(
+                renderCroppedJpeg = {
+                  image?.let { withContext(Dispatchers.Default) { renderCircularCropJpeg(it, cropScale, cropOffset, cropDiameterPx) } }
+                },
+                onSuccess = onSaved,
+              )
             },
           ) {
             Text("Save")
